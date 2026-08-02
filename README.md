@@ -35,6 +35,17 @@ npm run dev:client   # client only, http://localhost:5173 (proxies /api to :4000
 
 The SQLite file is created at `server/data/atheon.db`. Delete that folder to reset all data.
 
+## Deploying
+
+In production the server also serves the built React client, so it's a single Node
+service on one URL (`npm run build` then `npm run start`). Two documented paths:
+
+- **[Free — Oracle Cloud "Always Free" VM](docs/deploy-oracle-vm.md)** — runs the app as-is
+  (SQLite on a real disk), always-on, automatic HTTPS via Caddy. One-shot bootstrap:
+  `sudo bash deploy/setup.sh <your-hostname>`.
+- **[Paid — Render](docs/deploy-render.md)** (~$7/mo) — managed blueprint ([`render.yaml`](render.yaml))
+  with a persistent disk. Click-to-deploy, no server to manage.
+
 ## Feature map (from the requirements)
 
 - **Hierarchy** — Workspace › Project › Board › Task › Subtask, all created from the left sidebar.

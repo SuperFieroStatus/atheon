@@ -1,0 +1,17 @@
+[Unit]
+Description=Atheon project-management app
+After=network.target
+
+[Service]
+Type=simple
+User=__APP_USER__
+WorkingDirectory=__APP_DIR__
+EnvironmentFile=/etc/atheon.env
+ExecStart=/usr/bin/npm run start
+Restart=always
+RestartSec=3
+# Give Node a moment to bind before systemd considers it started
+TimeoutStartSec=30
+
+[Install]
+WantedBy=multi-user.target
