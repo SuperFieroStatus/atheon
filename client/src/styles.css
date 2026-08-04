@@ -383,6 +383,7 @@ input, textarea, select {
   width: 100%; max-width: 860px;
   box-shadow: var(--shadow-lg);
   display: flex; flex-direction: column;
+  overflow: hidden; /* clip children to the rounded corners (for the footer) */
   animation: pop 0.14s ease;
 }
 @keyframes pop { from { transform: translateY(8px) scale(0.98); opacity: 0; } to { transform: none; opacity: 1; } }
@@ -394,9 +395,25 @@ input, textarea, select {
   width: 300px; min-width: 300px; border-left: 1px solid var(--line);
   padding: 14px 16px; display: flex; flex-direction: column;
   background: var(--bg);
-  border-bottom-right-radius: 12px;
 }
 .modal-close { margin-left: auto; font-size: 20px; color: var(--text-faint); width: 32px; height: 32px; border-radius: 8px; }
+
+/* footer with the primary "Done" close + the auto-save flash */
+.modal-foot {
+  display: flex; align-items: center; justify-content: flex-end; gap: 12px;
+  padding: 11px 18px; border-top: 1px solid var(--line); background: var(--panel);
+}
+.saved-badge { color: #7fd06a; font-size: 12.5px; font-weight: 700; opacity: 0; transition: opacity 0.25s ease; }
+.saved-badge.show { opacity: 1; }
+
+/* muted icon send (no longer looks like a primary "Save") */
+.comment-send {
+  flex-shrink: 0; width: 38px; height: 38px; border: 1px solid var(--line-strong);
+  border-radius: 8px; background: var(--panel); color: var(--text-soft);
+  display: inline-flex; align-items: center; justify-content: center; cursor: pointer;
+  transition: color 0.12s, border-color 0.12s;
+}
+.comment-send:hover { color: var(--vex-bright); border-color: var(--vex); }
 .modal-close:hover { background: var(--bg-2); color: var(--text); }
 
 .field { margin-bottom: 14px; }
