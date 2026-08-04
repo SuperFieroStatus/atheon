@@ -383,26 +383,24 @@ input, textarea, select {
   width: 100%; max-width: 860px;
   box-shadow: var(--shadow-lg);
   display: flex; flex-direction: column;
-  overflow: hidden; /* clip children to the rounded corners (for the footer) */
   animation: pop 0.14s ease;
 }
 @keyframes pop { from { transform: translateY(8px) scale(0.98); opacity: 0; } to { transform: none; opacity: 1; } }
 .modal.narrow { max-width: 460px; }
-.modal-head { display: flex; align-items: flex-start; gap: 10px; padding: 16px 18px 8px; }
+.modal-head { display: flex; align-items: center; gap: 10px; padding: 14px 18px 8px; }
+.modal-head-actions { margin-left: auto; display: flex; align-items: center; gap: 12px; flex-shrink: 0; }
 .modal-body { display: flex; gap: 0; min-height: 0; }
 .modal-main { flex: 1; padding: 8px 18px 20px; min-width: 0; }
 .modal-side {
   width: 300px; min-width: 300px; border-left: 1px solid var(--line);
   padding: 14px 16px; display: flex; flex-direction: column;
   background: var(--bg);
+  border-bottom-right-radius: 12px;
 }
 .modal-close { margin-left: auto; font-size: 20px; color: var(--text-faint); width: 32px; height: 32px; border-radius: 8px; }
+.modal-close:hover { background: var(--bg-2); color: var(--text); }
 
-/* footer with the primary "Done" close + the auto-save flash */
-.modal-foot {
-  display: flex; align-items: center; justify-content: flex-end; gap: 12px;
-  padding: 11px 18px; border-top: 1px solid var(--line); background: var(--panel);
-}
+/* brief "Saved ✓" flash next to the header's Done button */
 .saved-badge { color: #7fd06a; font-size: 12.5px; font-weight: 700; opacity: 0; transition: opacity 0.25s ease; }
 .saved-badge.show { opacity: 1; }
 

@@ -121,7 +121,10 @@ export function TaskModal(props: Props) {
             onBlur={saveName}
             onKeyDown={(e) => e.key === 'Enter' && (e.target as HTMLInputElement).blur()}
           />
-          <button className="modal-close" onClick={props.onClose}>×</button>
+          <div className="modal-head-actions">
+            <span className={'saved-badge' + (saved ? ' show' : '')}>Saved ✓</span>
+            <button className="btn" onClick={props.onClose}>Done</button>
+          </div>
         </div>
 
         <div className="modal-body">
@@ -297,11 +300,6 @@ export function TaskModal(props: Props) {
               )}
             </div>
           </div>
-        </div>
-
-        <div className="modal-foot">
-          <span className={'saved-badge' + (saved ? ' show' : '')}>Saved ✓</span>
-          <button className="btn" onClick={props.onClose}>Done</button>
         </div>
       </div>
     </div>
