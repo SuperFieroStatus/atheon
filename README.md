@@ -40,9 +40,11 @@ The SQLite file is created at `server/data/atheon.db`. Delete that folder to res
 In production the server also serves the built React client, so it's a single Node
 service on one URL (`npm run build` then `npm run start`). Two documented paths:
 
-- **[Free — Oracle Cloud "Always Free" VM](docs/deploy-oracle-vm.md)** — runs the app as-is
-  (SQLite on a real disk), always-on, automatic HTTPS via Caddy. One-shot bootstrap:
-  `sudo bash deploy/setup.sh <your-hostname>`.
+- **[Free — Google Cloud "Always Free" VM](docs/deploy-gcp-vm.md)** — reliably available
+  `e2-micro`, runs the app as-is (SQLite on a real disk), always-on, automatic HTTPS. One-shot
+  bootstrap: `sudo bash deploy/setup.sh <your-hostname>`.
+- **[Free — Oracle Cloud "Always Free" VM](docs/deploy-oracle-vm.md)** — same idea on Oracle's
+  ARM shape (note: free ARM capacity is often unavailable).
 - **[Paid — Render](docs/deploy-render.md)** (~$7/mo) — managed blueprint ([`render.yaml`](render.yaml))
   with a persistent disk. Click-to-deploy, no server to manage.
 

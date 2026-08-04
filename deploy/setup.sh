@@ -32,6 +32,16 @@ echo "==> Run as:   $APP_USER"
 echo "==> Hostname: $HOST"
 echo
 
+echo "==> Ensuring swap (1 GB free VMs can OOM during the build) ..."
+if [ "$(free -m | awk '/^Swap:/{print $2}')" -lt 1024 ] && [ ! -f /swapfile ]; then
+  fallocate -l 2G /swapfile 2>/dev/null || dd if=/dev/zero of=/swapfile bs=1M count=2048
+  chmod 600 /swapfile
+  mkswap /swapfile
+  swapon /swapfile
+  grep -q '/swapfile' /etc/fstab || echo '/swapfile none swap sw 0 0' >> /etc/fstab
+  echo "    added 2G swap"
+fi
+
 echo "==> Installing Node 24 (needed for node:sqlite) ..."
 if ! command -v node >/dev/null 2>&1 || [ "$(node -p 'process.versions.node.split(".")[0]' 2>/dev/null || echo 0)" -lt 24 ]; then
   curl -fsSL https://deb.nodesource.com/setup_24.x | bash -
