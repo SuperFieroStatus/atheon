@@ -323,7 +323,7 @@ input, textarea, select {
 .dep-label { font-size: 10px; font-weight: 700; letter-spacing: 0.5px; color: var(--vex-dim); text-transform: uppercase; padding: 0 2px; }
 
 /* ------------------------------- Table -------------------------------- */
-.tableview { padding: 6px 18px 24px; overflow: auto; flex: 1; }
+.tableview { padding: 6px 18px 24px 24px; overflow: auto; flex: 1; } /* left inset clears the collapse handle */
 .tgroup { margin-bottom: 20px; }
 .tgroup-head { display: flex; align-items: center; gap: 8px; margin: 10px 0 4px; }
 .tgroup-head .column-name { font-size: 14px; }
@@ -343,7 +343,7 @@ input, textarea, select {
 .dep-row-mark td { border-left: 3px solid var(--vex); }
 
 /* ----------------------------- Timeline ------------------------------- */
-.timeline { flex: 1; overflow: auto; padding: 0; }
+.timeline { flex: 1; overflow: auto; padding: 0 0 0 24px; } /* left inset clears the collapse handle */
 .tl-grid { position: relative; min-width: max-content; }
 .tl-header { display: flex; position: sticky; top: 0; z-index: 5; background: var(--panel); border-bottom: 1px solid var(--line); }
 .tl-corner { width: 220px; min-width: 220px; padding: 8px 12px; font-weight: 700; font-size: 12px; color: var(--text-soft); border-right: 1px solid var(--line); position: sticky; left: 0; background: var(--panel); z-index: 6; }
@@ -607,4 +607,7 @@ input, textarea, select {
   .ttable th:nth-child(5), .ttable td:nth-child(5) { display: none; }
 
   .board-top { padding: 10px 12px; }
+  /* no collapse handle on mobile, so no need for the left gutter */
+  .tableview { padding-left: 12px; }
+  .timeline { padding-left: 0; }
 }
