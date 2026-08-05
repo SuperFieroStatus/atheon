@@ -30,6 +30,16 @@ router.post('/todos', (req, res) => {
   res.json({ todo: { ...todo, completed: !!todo.completed } });
 });
 
+// Persist a new ordering. Defined before '/todos/:id' so 'reorder' isn't matched as an id.
+router.patch('/todos/reorder', (req, res) => {
+  const uid = req.user!.id;
+  const order: string[] = Array.isArray(req.body?.order) ? req.body.order.map(String) : [];
+  const upd = db.prepare('UPDATE todos SET position = ? WHERE id = ? AND user_id = ?');
+  let pos = 0;
+  for (const tid of order) upd.run(pos++, tid, uid);
+  res.json({ ok: true });
+});
+
 router.patch('/todos/:id', (req, res) => {
   const uid = req.user!.id;
   const todo = db.prepare('SELECT * FROM todos WHERE id = ? AND user_id = ?').get(req.params.id, uid) as any;
