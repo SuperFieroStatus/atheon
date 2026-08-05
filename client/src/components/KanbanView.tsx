@@ -20,6 +20,8 @@ interface Ctx {
   moveTask: (id: string, categoryId: string) => Promise<void>;
   patchTask: (id: string, fields: Partial<Task>) => Promise<void>;
   createCategory: (name: string) => Promise<void>;
+  renameCategory: (categoryId: string, name: string) => Promise<void>;
+  deleteCategory: (categoryId: string) => Promise<void>;
 }
 
 export function KanbanView(ctx: Ctx) {
@@ -57,7 +59,11 @@ export function KanbanView(ctx: Ctx) {
             const items = arrange(colTasks);
             return (
               <Column key={cat.id} id={cat.id} name={cat.name} color={cat.color || '#B3BAC5'} count={colTasks.length}
-                onAdd={(name) => ctx.createTask(cat.id, name)} canEdit={data.canEdit}>
+                deleteCount={data.tasks.filter((t) => t.category_id === cat.id).length}
+                onAdd={(name) => ctx.createTask(cat.id, name)}
+                onRename={(name) => ctx.renameCategory(cat.id, name)}
+                onDelete={() => ctx.deleteCategory(cat.id)}
+                canEdit={data.canEdit}>
                 {items.map((it) =>
                   it.kind === 'group' ? (
                     <div className="dep-group" key={it.leader.id}>
@@ -87,23 +93,57 @@ export function KanbanView(ctx: Ctx) {
   );
 }
 
-function Column({ id, name, color, count, children, onAdd, canEdit }: {
-  id: string; name: string; color: string; count: number; children: React.ReactNode;
-  onAdd: (name: string) => void; canEdit: boolean;
+function Column({ id, name, color, count, deleteCount, children, onAdd, onRename, onDelete, canEdit }: {
+  id: string; name: string; color: string; count: number; deleteCount: number; children: React.ReactNode;
+  onAdd: (name: string) => void; onRename: (name: string) => void; onDelete: () => void; canEdit: boolean;
 }) {
   const { setNodeRef, isOver } = useDroppable({ id });
   const [adding, setAdding] = useState(false);
   const [val, setVal] = useState('');
+  const [renaming, setRenaming] = useState(false);
+  const [nameVal, setNameVal] = useState(name);
   function submit() {
     if (val.trim()) onAdd(val.trim());
     setVal(''); setAdding(false);
+  }
+  function submitRename() {
+    const n = nameVal.trim();
+    if (n && n !== name) onRename(n);
+    setRenaming(false);
+  }
+  function confirmDelete() {
+    const msg = deleteCount > 0
+      ? `Delete "${name}" and its ${deleteCount} task${deleteCount === 1 ? '' : 's'}? This can't be undone.`
+      : `Delete the empty "${name}" column?`;
+    if (confirm(msg)) onDelete();
   }
   return (
     <div className="column">
       <div className="column-head">
         <span className="column-dot" style={{ background: color }} />
-        <span className="column-name">{name}</span>
+        {renaming ? (
+          <input
+            className="column-name-edit"
+            autoFocus
+            value={nameVal}
+            onChange={(e) => setNameVal(e.target.value)}
+            onBlur={submitRename}
+            onKeyDown={(e) => { if (e.key === 'Enter') submitRename(); if (e.key === 'Escape') { setNameVal(name); setRenaming(false); } }}
+          />
+        ) : (
+          <span
+            className="column-name"
+            title={canEdit ? 'Click to rename' : undefined}
+            style={canEdit ? { cursor: 'text' } : undefined}
+            onClick={() => { if (canEdit) { setNameVal(name); setRenaming(true); } }}
+          >
+            {name}
+          </span>
+        )}
         <span className="column-count">{count}</span>
+        {canEdit && !renaming && (
+          <button className="column-del" title="Delete column" onClick={confirmDelete}>🗑</button>
+        )}
       </div>
       <div ref={setNodeRef} className={'column-body' + (isOver ? ' drop-over' : '')}>
         {children}

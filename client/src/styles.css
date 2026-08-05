@@ -244,8 +244,12 @@ input, textarea, select {
   padding: 10px 12px 8px;
 }
 .column-dot { width: 10px; height: 10px; border-radius: 3px; flex-shrink: 0; }
-.column-name { font-weight: 700; font-size: 13.5px; flex: 1; }
+.column-name { font-weight: 700; font-size: 13.5px; flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.column-name:hover { color: var(--vex-bright); }
+.column-name-edit { flex: 1; min-width: 0; font-weight: 700; font-size: 13.5px; color: var(--text); background: var(--panel); border: 1px solid var(--vex); border-radius: 5px; padding: 1px 5px; outline: none; }
 .column-count { color: var(--text-faint); font-size: 12px; font-weight: 600; }
+.column-del { background: none; border: none; cursor: pointer; font-size: 12px; padding: 2px 3px; border-radius: 5px; opacity: 0.35; transition: opacity 0.12s; flex-shrink: 0; }
+.column-del:hover { opacity: 1; background: rgba(214,48,49,0.15); }
 .column-body { padding: 0 8px 8px; overflow-y: auto; display: flex; flex-direction: column; gap: 8px; }
 .column-body.drop-over { background: rgba(var(--vex-glow),0.14); border-radius: 8px; }
 .add-card {

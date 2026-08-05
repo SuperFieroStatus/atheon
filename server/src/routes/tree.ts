@@ -237,6 +237,8 @@ router.delete('/categories/:id', (req, res) => {
   if (!cat) return res.status(404).json({ error: 'Not found' });
   if (!canEdit(boardRole(uid, cat.board_id)))
     return res.status(403).json({ error: 'No permission' });
+  // Remove the column's tasks too (otherwise they'd orphan and vanish from views).
+  db.prepare('DELETE FROM tasks WHERE category_id = ?').run(req.params.id);
   db.prepare('DELETE FROM categories WHERE id = ?').run(req.params.id);
   res.json({ ok: true });
 });

@@ -103,6 +103,21 @@ export function BoardArea({ boardId, currentUser }: Props) {
     setData((d) => (d ? { ...d, categories: [...d.categories, cat] } : d));
   };
 
+  const renameCategory = async (categoryId: string, name: string) => {
+    await api.patch(`/categories/${categoryId}`, { name });
+    setData((d) => (d ? { ...d, categories: d.categories.map((c) => (c.id === categoryId ? { ...c, name } : c)) } : d));
+  };
+
+  const deleteCategory = async (categoryId: string) => {
+    await api.del(`/categories/${categoryId}`);
+    // the column's tasks are removed server-side too
+    setData((d) => (d ? {
+      ...d,
+      categories: d.categories.filter((c) => c.id !== categoryId),
+      tasks: d.tasks.filter((t) => t.category_id !== categoryId),
+    } : d));
+  };
+
   if (!boardId) {
     return (
       <div className="main">
@@ -122,7 +137,7 @@ export function BoardArea({ boardId, currentUser }: Props) {
     return <div className="main"><div className="empty-board"><div className="big">Board unavailable</div><div>You may not have access to this board.</div></div></div>;
   }
 
-  const ctx = { data, colorBy, filters, tz: currentUser.timezone, openTask: setOpenTaskId, createTask, moveTask, patchTask, createCategory };
+  const ctx = { data, colorBy, filters, tz: currentUser.timezone, openTask: setOpenTaskId, createTask, moveTask, patchTask, createCategory, renameCategory, deleteCategory };
   const filtersActive = filters.assignee || filters.tag || filters.from || filters.to;
 
   return (
