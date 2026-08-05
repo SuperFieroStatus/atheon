@@ -19,7 +19,10 @@ interface Props {
 export function BoardArea({ boardId, currentUser }: Props) {
   const [data, setData] = useState<BoardData | null>(null);
   const [loading, setLoading] = useState(false);
-  const [view, setView] = useState<ViewMode>('kanban');
+  // Table is the friendlier default on phones (vertical, no horizontal scroll)
+  const [view, setView] = useState<ViewMode>(
+    typeof window !== 'undefined' && window.matchMedia('(max-width: 768px)').matches ? 'table' : 'kanban'
+  );
   const [colorBy, setColorBy] = useState<ColorBy>('none');
   const [filters, setFilters] = useState<Filters>(emptyFilters);
   const [openTaskId, setOpenTaskId] = useState<string | null>(null);

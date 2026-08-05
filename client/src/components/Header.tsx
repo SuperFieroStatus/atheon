@@ -8,9 +8,11 @@ interface Props {
   onLogout: () => void;
   onOpenSettings: () => void;
   onOpenGroups: () => void;
+  onToggleSidebar: () => void;
+  onToggleTodo: () => void;
 }
 
-export function Header({ user, onLogout, onOpenSettings, onOpenGroups }: Props) {
+export function Header({ user, onLogout, onOpenSettings, onOpenGroups, onToggleSidebar, onToggleTodo }: Props) {
   const [menu, setMenu] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
 
@@ -25,10 +27,28 @@ export function Header({ user, onLogout, onOpenSettings, onOpenGroups }: Props) 
   return (
     <header className="header">
       <div className="header-left">
+        <button
+          className="icon-btn mobile-only"
+          onClick={onToggleSidebar}
+          title="Menu"
+          aria-label="Open workspaces menu"
+          style={{ color: '#c3ccd6', fontSize: 18 }}
+        >
+          ☰
+        </button>
         <Logo />
       </div>
 
       <div className="hstack" style={{ gap: 6 }}>
+        <button
+          className="icon-btn mobile-only"
+          onClick={onToggleTodo}
+          title="My To-Do"
+          aria-label="Open my to-do list"
+          style={{ color: '#c3ccd6', fontSize: 16 }}
+        >
+          ✓
+        </button>
         <button
           className="icon-btn"
           onClick={onOpenGroups}

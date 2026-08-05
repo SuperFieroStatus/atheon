@@ -9,16 +9,25 @@ import { TodoSidebar } from './components/TodoSidebar';
 import { UserSettings } from './components/UserSettings';
 import { GroupsDialog } from './components/GroupsDialog';
 
+const isMobile = () => typeof window !== 'undefined' && window.matchMedia('(max-width: 768px)').matches;
+
 export default function App() {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
   const [tree, setTree] = useState<WorkspaceNode[]>([]);
   const [selectedBoard, setSelectedBoard] = useState<string | null>(null);
 
-  const [sidebarOpen, setSidebarOpen] = useState(true);
-  const [todoOpen, setTodoOpen] = useState(true);
+  // On phones the panels start closed (they slide over as drawers); on desktop they dock open.
+  const [sidebarOpen, setSidebarOpen] = useState(() => !isMobile());
+  const [todoOpen, setTodoOpen] = useState(() => !isMobile());
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [groupsOpen, setGroupsOpen] = useState(false);
+
+  // Drawer toggles: on mobile only one panel is open at a time.
+  const toggleSidebar = () => setSidebarOpen((s) => { const n = !s; if (n && isMobile()) setTodoOpen(false); return n; });
+  const toggleTodo = () => setTodoOpen((s) => { const n = !s; if (n && isMobile()) setSidebarOpen(false); return n; });
+  const closeDrawers = () => { setSidebarOpen(false); setTodoOpen(false); };
+  const selectBoard = (id: string) => { setSelectedBoard(id); if (isMobile()) setSidebarOpen(false); };
 
   // bootstrap session
   useEffect(() => {
@@ -69,20 +78,23 @@ export default function App() {
         onLogout={logout}
         onOpenSettings={() => setSettingsOpen(true)}
         onOpenGroups={() => setGroupsOpen(true)}
+        onToggleSidebar={toggleSidebar}
+        onToggleTodo={toggleTodo}
       />
       <div className="workarea">
+        {(sidebarOpen || todoOpen) && <div className="drawer-backdrop" onClick={closeDrawers} />}
         <Sidebar
           tree={tree}
           reloadTree={loadTree}
           selectedBoard={selectedBoard}
-          onSelectBoard={setSelectedBoard}
+          onSelectBoard={selectBoard}
           open={sidebarOpen}
           currentUser={user}
         />
         <button
-          className="edge-toggle left"
+          className="edge-toggle left desktop-only"
           style={{ left: sidebarOpen ? 280 : 0 }}
-          onClick={() => setSidebarOpen((s) => !s)}
+          onClick={toggleSidebar}
           title={sidebarOpen ? 'Hide sidebar' : 'Show sidebar'}
           aria-label={sidebarOpen ? 'Hide sidebar' : 'Show sidebar'}
         >
@@ -94,9 +106,9 @@ export default function App() {
           onStructureChange={loadTree}
         />
         <button
-          className="edge-toggle right"
+          className="edge-toggle right desktop-only"
           style={{ right: todoOpen ? 300 : 0 }}
-          onClick={() => setTodoOpen((s) => !s)}
+          onClick={toggleTodo}
           title={todoOpen ? 'Hide To-Do list' : 'Show To-Do list'}
           aria-label={todoOpen ? 'Hide To-Do list' : 'Show To-Do list'}
         >

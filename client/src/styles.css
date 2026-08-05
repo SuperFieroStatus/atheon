@@ -559,3 +559,49 @@ input, textarea, select {
 ::-webkit-scrollbar-thumb { background: rgba(120,130,140,0.4); border-radius: 6px; border: 2px solid transparent; background-clip: content-box; }
 ::-webkit-scrollbar-thumb:hover { background: rgba(120,130,140,0.6); background-clip: content-box; }
 .sidebar ::-webkit-scrollbar-thumb { background: rgba(160,170,180,0.25); background-clip: content-box; }
+
+/* ------------------------- responsive / mobile ------------------------- */
+.mobile-only { display: none !important; }
+.drawer-backdrop { display: none; }
+
+@media (max-width: 768px) {
+  .mobile-only { display: inline-flex !important; }
+  .desktop-only { display: none !important; }
+
+  /* left (workspaces) and right (to-do) panels become slide-over drawers */
+  .drawer-backdrop {
+    display: block; position: fixed; inset: var(--header-h) 0 0 0;
+    background: rgba(0, 0, 0, 0.5); z-index: 55;
+  }
+  .sidebar {
+    position: fixed; top: var(--header-h); bottom: 0; left: 0; z-index: 60;
+    width: min(84vw, 320px);
+    transform: translateX(0); transition: transform 0.2s ease;
+    box-shadow: 4px 0 28px rgba(0, 0, 0, 0.55);
+  }
+  .sidebar.collapsed { width: min(84vw, 320px); transform: translateX(-100%); }
+  .todo-panel {
+    position: fixed; top: var(--header-h); bottom: 0; right: 0; z-index: 60;
+    width: min(84vw, 320px); min-width: 0;
+    transform: translateX(0); transition: transform 0.2s ease;
+    box-shadow: -4px 0 28px rgba(0, 0, 0, 0.55);
+  }
+  .todo-panel.collapsed { width: min(84vw, 320px); min-width: 0; transform: translateX(100%); }
+
+  /* modals go full-screen, single column */
+  .overlay { padding: 0; }
+  .modal, .modal.narrow { max-width: 100%; width: 100%; min-height: 100%; border-radius: 0; }
+  .modal-body { flex-direction: column; }
+  .modal-side {
+    width: auto; min-width: 0; border-left: none;
+    border-top: 1px solid var(--line); border-bottom-right-radius: 0;
+  }
+  .comments { display: block; }
+  .comment-list { overflow: visible; }
+  .comment-box { margin-top: 12px; }
+
+  /* table: drop the tags column so it fits a phone */
+  .ttable th:nth-child(5), .ttable td:nth-child(5) { display: none; }
+
+  .board-top { padding: 10px 12px; }
+}
