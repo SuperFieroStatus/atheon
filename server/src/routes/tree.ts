@@ -17,7 +17,7 @@ const router = Router();
 router.use(requireAuth);
 
 const DEFAULT_CATEGORIES = [
-  { name: 'To Do', color: '#B3BAC5' },
+  { name: 'Not Started', color: '#B3BAC5' },
   { name: 'In Progress', color: '#0079BF' },
   { name: 'Done', color: '#61BD4F' },
 ];
