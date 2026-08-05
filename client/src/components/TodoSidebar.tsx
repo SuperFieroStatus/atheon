@@ -7,6 +7,7 @@ export function TodoSidebar({ open, tz }: { open: boolean; tz?: string | null })
   const [todos, setTodos] = useState<Todo[]>([]);
   const [name, setName] = useState('');
   const [due, setDue] = useState('');
+  const [editingDate, setEditingDate] = useState<string | null>(null);
 
   async function load() {
     const { todos } = await api.get('/todos');
@@ -38,6 +39,12 @@ export function TodoSidebar({ open, tz }: { open: boolean; tz?: string | null })
     setTodos((t) => t.filter((x) => x.id !== id));
   }
 
+  async function updateDate(t: Todo, value: string) {
+    const { todo } = await api.patch(`/todos/${t.id}`, { dueDate: value || null });
+    setTodos((list) => list.map((x) => (x.id === t.id ? todo : x)));
+    setEditingDate(null);
+  }
+
   return (
     <aside className={'todo-panel' + (open ? '' : ' collapsed')}>
       <div className="todo-head">
@@ -55,7 +62,26 @@ export function TodoSidebar({ open, tz }: { open: boolean; tz?: string | null })
               <input type="checkbox" className="rcheck" checked={t.completed} onChange={() => toggle(t)} />
               <div style={{ flex: 1 }}>
                 <div className="todo-name">{t.name}</div>
-                {t.due_date && <div className={'todo-due' + (ds === 'due-over' ? ' over' : '')}>Due {fmtDate(t.due_date, tz)}</div>}
+                {editingDate === t.id ? (
+                  <input
+                    type="date"
+                    className="todo-date-edit"
+                    autoFocus
+                    value={t.due_date || ''}
+                    onChange={(e) => updateDate(t, e.target.value)}
+                    onBlur={() => setEditingDate(null)}
+                  />
+                ) : t.due_date ? (
+                  <div
+                    className={'todo-due editable' + (ds === 'due-over' ? ' over' : '')}
+                    title="Click to change the date"
+                    onClick={() => setEditingDate(t.id)}
+                  >
+                    Due {fmtDate(t.due_date, tz)}
+                  </div>
+                ) : (
+                  <button className="todo-add-date" onClick={() => setEditingDate(t.id)}>＋ due date</button>
+                )}
               </div>
               <button className="icon-btn" style={{ color: 'var(--text-faint)' }} onClick={() => remove(t.id)}>×</button>
             </div>

@@ -490,6 +490,12 @@ input, textarea, select {
 .todo-name { font-size: 13px; flex: 1; line-height: 1.35; }
 .todo-due { font-size: 11px; color: var(--text-faint); margin-top: 2px; }
 .todo-due.over { color: var(--danger); }
+.todo-due.editable { cursor: pointer; }
+.todo-due.editable:hover { text-decoration: underline; }
+.todo-date-edit { margin-top: 2px; font-size: 11px; padding: 2px 5px; border: 1px solid var(--line-strong); border-radius: 5px; background: var(--panel); color: var(--text); color-scheme: dark; outline: none; }
+.todo-date-edit:focus { border-color: var(--vex); }
+.todo-add-date { margin-top: 2px; font-size: 11px; color: var(--text-faint); background: none; padding: 0; cursor: pointer; }
+.todo-add-date:hover { color: var(--vex-bright); }
 .todo-add { padding: 10px 12px; border-top: 1px solid var(--line); }
 
 /* rounded checkbox */
