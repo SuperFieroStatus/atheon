@@ -638,3 +638,58 @@ input, textarea, select {
   .tableview { padding-left: 12px; }
   .timeline { padding-left: 0; }
 }
+
+/* ---------- public bug-report form (/report/<token>) ---------- */
+.bugform-page {
+  min-height: 100vh; width: 100%;
+  background: var(--bg); color: var(--text);
+  display: flex; align-items: flex-start; justify-content: center;
+  padding: 40px 16px; overflow-y: auto;
+}
+.bugform-card {
+  width: 100%; max-width: 620px;
+  background: var(--panel); border: 1px solid var(--line);
+  border-radius: 14px; box-shadow: var(--shadow-lg);
+  padding: 28px 30px;
+}
+.bugform-logo { font-weight: 800; letter-spacing: 4px; color: var(--vex); font-size: 15px; }
+.bugform-title { font-size: 24px; font-weight: 800; margin: 10px 0 4px; }
+.bugform-sub { font-size: 13px; margin: 0 0 18px; }
+.bugform-field { display: flex; flex-direction: column; gap: 5px; margin-bottom: 14px; }
+.bugform-field > span { font-size: 12.5px; font-weight: 600; color: var(--text-soft); }
+.bugform-field .req { color: var(--vex); }
+.bugform-field textarea.input { resize: vertical; min-height: 38px; font-family: inherit; }
+.bugform-files { list-style: none; margin: 8px 0 0; padding: 0; display: flex; flex-direction: column; gap: 4px; }
+.bugform-files li { display: flex; align-items: center; gap: 8px; font-size: 12.5px; background: var(--bg-2); border-radius: 6px; padding: 4px 8px; }
+.bugform-fname { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.bugform-hp { position: absolute; left: -9999px; width: 1px; height: 1px; opacity: 0; }
+.bugform-error { background: rgba(214,48,49,0.12); color: var(--danger); border-radius: 8px; padding: 8px 12px; font-size: 13px; margin-bottom: 12px; }
+.bugform-submit { width: 100%; justify-content: center; padding: 11px; font-size: 14px; margin-top: 4px; }
+.bugform-msg { text-align: center; }
+.bugform-msg h2 { margin: 12px 0 6px; font-size: 20px; }
+.bugform-msg .btn { margin-top: 18px; }
+.bugform-check {
+  width: 54px; height: 54px; margin: 16px auto 0; border-radius: 50%;
+  background: rgba(97,189,79,0.15); color: #61bd4f;
+  display: flex; align-items: center; justify-content: center; font-size: 28px;
+}
+
+/* board control: enable/copy the public bug form */
+.bugform-ctl { position: relative; }
+.btn.subtle.on { color: var(--vex-bright); box-shadow: inset 0 0 0 1px var(--vex); }
+.menu-backdrop { position: fixed; inset: 0; z-index: 40; }
+.bugform-pop {
+  position: absolute; top: calc(100% + 6px); left: 0; z-index: 41;
+  width: 340px; background: var(--panel); border: 1px solid var(--line);
+  border-radius: 10px; box-shadow: var(--shadow-lg); padding: 14px;
+}
+.bugform-pop-head { display: flex; align-items: center; justify-content: space-between; }
+.bugform-pop-head .switch { display: inline-flex; align-items: center; gap: 6px; font-size: 12.5px; font-weight: 600; color: var(--text-soft); cursor: pointer; }
+.bugform-pop-head .switch input { width: 15px; height: 15px; accent-color: var(--vex); }
+.bugform-linkrow { display: flex; gap: 6px; align-items: center; }
+.bugform-linkrow .input { flex: 1; font-size: 12px; }
+
+@media (max-width: 768px) {
+  .bugform-card { padding: 22px 18px; }
+  .bugform-pop { width: min(340px, calc(100vw - 32px)); }
+}

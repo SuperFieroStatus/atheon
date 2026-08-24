@@ -167,6 +167,8 @@ export function BoardArea({ boardId, currentUser }: Props) {
           {data.workspace.name} <span className="sep">/</span> {data.project.name} <span className="sep">/</span> <b>{data.board.name}</b>
         </div>
 
+        {data.canEdit && <BugFormButton boardId={data.board.id} />}
+
         <div className="viewswitch">
           <button className={view === 'kanban' ? 'active' : ''} onClick={() => setView('kanban')}>Kanban</button>
           <button className={view === 'table' ? 'active' : ''} onClick={() => setView('table')}>Table</button>
@@ -214,6 +216,67 @@ export function BoardArea({ boardId, currentUser }: Props) {
           onClose={() => setOpenTaskId(null)}
           openTask={setOpenTaskId}
         />
+      )}
+    </div>
+  );
+}
+
+/** Board-level control: turn the public bug-report form on/off and copy its link. */
+function BugFormButton({ boardId }: { boardId: string }) {
+  const [open, setOpen] = useState(false);
+  const [enabled, setEnabled] = useState(false);
+  const [token, setToken] = useState<string | null>(null);
+  const [busy, setBusy] = useState(false);
+  const [copied, setCopied] = useState(false);
+
+  useEffect(() => {
+    if (!open) return;
+    api.get(`/boards/${boardId}/bug-intake`).then((s) => { setEnabled(s.enabled); setToken(s.token); }).catch(() => {});
+  }, [open, boardId]);
+
+  const link = token ? `${window.location.origin}/report/${token}` : '';
+
+  async function toggle(next: boolean) {
+    setBusy(true);
+    try {
+      const s = await api.put(`/boards/${boardId}/bug-intake`, { enabled: next });
+      setEnabled(s.enabled); setToken(s.token);
+    } finally { setBusy(false); }
+  }
+
+  async function copy() {
+    try { await navigator.clipboard.writeText(link); setCopied(true); setTimeout(() => setCopied(false), 1500); } catch {}
+  }
+
+  return (
+    <div className="bugform-ctl">
+      <button className={'btn subtle sm' + (enabled ? ' on' : '')} onClick={() => setOpen((o) => !o)} title="Public bug-report form">
+        🐞 Bug form{enabled ? ' · on' : ''}
+      </button>
+      {open && (
+        <>
+          <div className="menu-backdrop" onClick={() => setOpen(false)} />
+          <div className="bugform-pop">
+            <div className="bugform-pop-head">
+              <b>Public bug form</b>
+              <label className="switch">
+                <input type="checkbox" checked={enabled} disabled={busy} onChange={(e) => toggle(e.target.checked)} />
+                <span>{enabled ? 'On' : 'Off'}</span>
+              </label>
+            </div>
+            <p className="muted" style={{ fontSize: 12, margin: '4px 0 10px' }}>
+              Anyone with this link can file a bug — it lands as a task in this board’s first column. No account needed.
+            </p>
+            {enabled && token ? (
+              <div className="bugform-linkrow">
+                <input className="input" readOnly value={link} onFocus={(e) => e.currentTarget.select()} />
+                <button className="btn subtle sm" onClick={copy}>{copied ? 'Copied ✓' : 'Copy'}</button>
+              </div>
+            ) : (
+              <span className="muted" style={{ fontSize: 12 }}>Turn it on to get a shareable link.</span>
+            )}
+          </div>
+        </>
       )}
     </div>
   );

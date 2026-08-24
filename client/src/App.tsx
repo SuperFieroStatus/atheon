@@ -8,10 +8,19 @@ import { BoardArea } from './components/BoardView';
 import { TodoSidebar } from './components/TodoSidebar';
 import { UserSettings } from './components/UserSettings';
 import { GroupsDialog } from './components/GroupsDialog';
+import { BugReportForm } from './components/BugReportForm';
 
 const isMobile = () => typeof window !== 'undefined' && window.matchMedia('(max-width: 768px)').matches;
 
+// Public bug-report form lives at /report/<token> and skips auth + app chrome.
+const reportMatch = typeof window !== 'undefined' && window.location.pathname.match(/^\/report\/([A-Za-z0-9]+)\/?$/);
+
 export default function App() {
+  if (reportMatch) return <BugReportForm token={reportMatch[1]} />;
+  return <AppShell />;
+}
+
+function AppShell() {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
   const [tree, setTree] = useState<WorkspaceNode[]>([]);

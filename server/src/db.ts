@@ -160,6 +160,13 @@ CREATE TABLE IF NOT EXISTS todos (
   created_at TEXT NOT NULL
 );
 
+CREATE TABLE IF NOT EXISTS bug_intake (
+  board_id    TEXT PRIMARY KEY REFERENCES boards(id) ON DELETE CASCADE,
+  token       TEXT UNIQUE NOT NULL,
+  enabled     INTEGER NOT NULL DEFAULT 1,
+  created_at  TEXT NOT NULL
+);
+
 CREATE TABLE IF NOT EXISTS workspace_order (
   user_id      TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
   workspace_id TEXT NOT NULL REFERENCES workspaces(id) ON DELETE CASCADE,
@@ -174,6 +181,7 @@ CREATE INDEX IF NOT EXISTS idx_tasks_board ON tasks(board_id);
 CREATE INDEX IF NOT EXISTS idx_tasks_parent ON tasks(parent_task_id);
 CREATE INDEX IF NOT EXISTS idx_comments_task ON comments(task_id);
 CREATE INDEX IF NOT EXISTS idx_attachments_task ON attachments(task_id);
+CREATE INDEX IF NOT EXISTS idx_bug_intake_token ON bug_intake(token);
 CREATE INDEX IF NOT EXISTS idx_memberships_user ON memberships(user_id);
 CREATE INDEX IF NOT EXISTS idx_memberships_resource ON memberships(resource_type, resource_id);
 CREATE INDEX IF NOT EXISTS idx_todos_user ON todos(user_id);

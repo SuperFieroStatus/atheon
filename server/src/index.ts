@@ -12,6 +12,8 @@ import taskRoutes from './routes/tasks.js';
 import sharingRoutes from './routes/sharing.js';
 import todoRoutes from './routes/todos.js';
 import attachmentRoutes from './routes/attachments.js';
+import bugIntakeRoutes from './routes/bugintake.js';
+import publicRoutes from './routes/public.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const isProd = process.env.NODE_ENV === 'production';
@@ -43,6 +45,8 @@ app.use('/api', taskRoutes);
 app.use('/api', sharingRoutes);
 app.use('/api', todoRoutes);
 app.use('/api', attachmentRoutes);
+app.use('/api', bugIntakeRoutes);
+app.use('/api/public', publicRoutes); // unauthenticated bug-intake form
 
 app.use((err: any, _req: express.Request, res: express.Response, _next: express.NextFunction) => {
   console.error('[error]', err);
