@@ -6,8 +6,12 @@ import fs from 'node:fs';
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 // DATA_DIR lets production point the SQLite file at a persistent disk
 // (e.g. Render's mounted volume); locally it defaults to server/data.
-const dataDir = process.env.DATA_DIR || path.join(__dirname, '..', 'data');
+export const dataDir = process.env.DATA_DIR || path.join(__dirname, '..', 'data');
 if (!fs.existsSync(dataDir)) fs.mkdirSync(dataDir, { recursive: true });
+
+// Uploaded task attachments live on the same persistent disk as the DB.
+export const uploadsDir = path.join(dataDir, 'uploads');
+if (!fs.existsSync(uploadsDir)) fs.mkdirSync(uploadsDir, { recursive: true });
 
 const dbPath = path.join(dataDir, 'atheon.db');
 export const db = new DatabaseSync(dbPath);
@@ -104,6 +108,17 @@ CREATE TABLE IF NOT EXISTS comments (
   created_at TEXT NOT NULL
 );
 
+CREATE TABLE IF NOT EXISTS attachments (
+  id            TEXT PRIMARY KEY,
+  task_id       TEXT NOT NULL REFERENCES tasks(id) ON DELETE CASCADE,
+  filename      TEXT NOT NULL,
+  original_name TEXT NOT NULL,
+  mime          TEXT NOT NULL,
+  size          INTEGER NOT NULL,
+  uploaded_by   TEXT REFERENCES users(id) ON DELETE SET NULL,
+  created_at    TEXT NOT NULL
+);
+
 CREATE TABLE IF NOT EXISTS memberships (
   id            TEXT PRIMARY KEY,
   user_id       TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
@@ -158,6 +173,7 @@ CREATE INDEX IF NOT EXISTS idx_categories_board ON categories(board_id);
 CREATE INDEX IF NOT EXISTS idx_tasks_board ON tasks(board_id);
 CREATE INDEX IF NOT EXISTS idx_tasks_parent ON tasks(parent_task_id);
 CREATE INDEX IF NOT EXISTS idx_comments_task ON comments(task_id);
+CREATE INDEX IF NOT EXISTS idx_attachments_task ON attachments(task_id);
 CREATE INDEX IF NOT EXISTS idx_memberships_user ON memberships(user_id);
 CREATE INDEX IF NOT EXISTS idx_memberships_resource ON memberships(resource_type, resource_id);
 CREATE INDEX IF NOT EXISTS idx_todos_user ON todos(user_id);

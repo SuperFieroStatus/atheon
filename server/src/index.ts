@@ -11,6 +11,7 @@ import treeRoutes from './routes/tree.js';
 import taskRoutes from './routes/tasks.js';
 import sharingRoutes from './routes/sharing.js';
 import todoRoutes from './routes/todos.js';
+import attachmentRoutes from './routes/attachments.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const isProd = process.env.NODE_ENV === 'production';
@@ -41,6 +42,7 @@ app.use('/api', treeRoutes);
 app.use('/api', taskRoutes);
 app.use('/api', sharingRoutes);
 app.use('/api', todoRoutes);
+app.use('/api', attachmentRoutes);
 
 app.use((err: any, _req: express.Request, res: express.Response, _next: express.NextFunction) => {
   console.error('[error]', err);

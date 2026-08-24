@@ -24,7 +24,8 @@ function assigneesForTask(taskId: string): string[] {
 
 function serializeTask(t: any) {
   const { assignee_id, ...rest } = t; // legacy single column no longer surfaced
-  return { ...rest, completed: !!t.completed, tags: tagsForTask(t.id), assignee_ids: assigneesForTask(t.id) };
+  const attachment_count = (db.prepare('SELECT COUNT(*) AS c FROM attachments WHERE task_id = ?').get(t.id) as any).c;
+  return { ...rest, completed: !!t.completed, tags: tagsForTask(t.id), assignee_ids: assigneesForTask(t.id), attachment_count };
 }
 
 /** Every user with any access to the project this board belongs to (assignee pool). */

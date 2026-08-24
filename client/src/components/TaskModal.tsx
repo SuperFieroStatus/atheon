@@ -1,8 +1,16 @@
 import { useEffect, useRef, useState } from 'react';
 import { api } from '../api';
-import type { BoardData, Task, Tag, Comment, User } from '../types';
+import type { BoardData, Task, Tag, Comment, User, Attachment } from '../types';
 import { Avatar } from './Avatar';
 import { PRIORITY_COLORS, PRIORITY_LABELS, fmtDateTime } from '../board-utils';
+
+function fmtSize(bytes: number): string {
+  if (bytes < 1024) return bytes + ' B';
+  if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(0) + ' KB';
+  return (bytes / 1024 / 1024).toFixed(1) + ' MB';
+}
+const isImage = (m: string) => m.startsWith('image/');
+const isVideo = (m: string) => m.startsWith('video/');
 
 interface Props {
   taskId: string;
@@ -39,11 +47,15 @@ export function TaskModal(props: Props) {
   const [commentText, setCommentText] = useState('');
   const [saved, setSaved] = useState(false);
   const savedTimer = useRef<number | undefined>(undefined);
+  const [attachments, setAttachments] = useState<Attachment[]>([]);
+  const [uploading, setUploading] = useState(false);
+  const fileRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => { setName(task?.name || ''); setDesc(task?.description || ''); }, [taskId]);
 
   useEffect(() => {
     api.get(`/tasks/${taskId}/comments`).then(({ comments }) => setComments(comments)).catch(() => {});
+    api.get(`/tasks/${taskId}/attachments`).then(({ attachments }) => setAttachments(attachments)).catch(() => {});
   }, [taskId]);
 
   useEffect(() => {
@@ -105,6 +117,32 @@ export function TaskModal(props: Props) {
     const tag = await props.onCreateTag(newTag.trim());
     await toggleTag(taskId, tag.id, true);
     setNewTag('');
+  }
+  async function uploadFiles(files: FileList | null) {
+    if (!files || !files.length) return;
+    setUploading(true);
+    try {
+      const form = new FormData();
+      Array.from(files).forEach((f) => form.append('files', f));
+      const res = await fetch(`/api/tasks/${taskId}/attachments`, { method: 'POST', credentials: 'include', body: form });
+      const body = await res.json();
+      if (res.ok && body.attachments) {
+        setAttachments((a) => [...a, ...body.attachments]);
+        flashSaved();
+      } else {
+        alert(body.error || 'Upload failed (files up to 50 MB).');
+      }
+    } catch {
+      alert('Upload failed.');
+    } finally {
+      setUploading(false);
+      if (fileRef.current) fileRef.current.value = '';
+    }
+  }
+  async function deleteAttachment(a: Attachment) {
+    await api.del(`/attachments/${a.id}`);
+    setAttachments((list) => list.filter((x) => x.id !== a.id));
+    flashSaved();
   }
 
   const isParent = !task.parent_task_id;
@@ -267,6 +305,46 @@ export function TaskModal(props: Props) {
                 )}
               </div>
             )}
+
+            {/* attachments */}
+            <div className="field">
+              <label className="field-label">Attachments{attachments.length > 0 ? ` (${attachments.length})` : ''}</label>
+              {attachments.length > 0 && (
+                <div className="attach-grid">
+                  {attachments.map((a) => (
+                    <div className="attach-item" key={a.id}>
+                      {isImage(a.mime) ? (
+                        <a href={a.url} target="_blank" rel="noreferrer" className="attach-thumb">
+                          <img src={a.url} alt={a.original_name} loading="lazy" />
+                        </a>
+                      ) : isVideo(a.mime) ? (
+                        <video className="attach-thumb" src={a.url} controls preload="metadata" />
+                      ) : (
+                        <a href={a.url} target="_blank" rel="noreferrer" className="attach-thumb file">
+                          <span style={{ fontSize: 22 }}>📄</span>
+                        </a>
+                      )}
+                      <div className="attach-meta">
+                        <a href={a.url} target="_blank" rel="noreferrer" className="attach-name" title={a.original_name}>{a.original_name}</a>
+                        <span className="attach-size">{fmtSize(a.size)}</span>
+                      </div>
+                      {canEdit && <button className="icon-btn attach-del" title="Remove" onClick={() => deleteAttachment(a)}>×</button>}
+                    </div>
+                  ))}
+                </div>
+              )}
+              {canEdit && (
+                <>
+                  <input ref={fileRef} type="file" multiple style={{ display: 'none' }}
+                    onChange={(e) => uploadFiles(e.target.files)} />
+                  <button className="btn subtle sm" disabled={uploading} onClick={() => fileRef.current?.click()}>
+                    {uploading ? 'Uploading…' : '＋ Attach file'}
+                  </button>
+                  <span className="muted" style={{ fontSize: 11, marginLeft: 8 }}>Images, video, PDFs… up to 50 MB</span>
+                </>
+              )}
+              {attachments.length === 0 && !canEdit && <span className="muted" style={{ fontSize: 13 }}>No attachments.</span>}
+            </div>
           </div>
 
           {/* discussion */}

@@ -263,6 +263,7 @@ function KanbanCard({ task, ctx, subs, isDependent }: { task: Task; ctx: Ctx; su
           </span>
         )}
         {task.due_date && <span className={'pill ' + (ds ? 'due-' + ds.split('-')[1] : '')}>📅 {fmtDate(task.due_date, ctx.tz)}</span>}
+        {!!task.attachment_count && <span className="pill card-attach" title={`${task.attachment_count} attachment${task.attachment_count > 1 ? 's' : ''}`}>📎 {task.attachment_count}</span>}
         <span className="spacer" />
         {assignees.length > 0 && <AvatarStack people={assignees} size="sm" max={3} />}
       </div>

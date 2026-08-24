@@ -62,6 +62,17 @@ export interface Task {
   position: number;
   created_at: string;
   tags: Tag[];
+  attachment_count?: number;
+}
+
+export interface Attachment {
+  id: string;
+  task_id: string;
+  original_name: string;
+  mime: string;
+  size: number;
+  created_at: string;
+  url: string;
 }
 
 export interface Member {
