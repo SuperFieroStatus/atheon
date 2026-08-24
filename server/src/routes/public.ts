@@ -3,7 +3,7 @@ import multer from 'multer';
 import path from 'node:path';
 import fs from 'node:fs';
 import { db, uploadsDir } from '../db.js';
-import { id, now } from '../util.js';
+import { id, now, TAG_COLORS, darkenForWhiteText } from '../util.js';
 
 // Public, UNAUTHENTICATED bug-intake form. Anyone with a board's share token can
 // file a bug, which lands as a task in that board's first ("New") column.
@@ -108,11 +108,18 @@ router.post('/bug/:token', upload.array('files', 10), (req, res) => {
      VALUES (?,?,?,?,?,?,?,?)`
   ).run(tid, boardId, categoryId, null, name, description, maxPos, now());
 
-  // Tag it "Bug" if the board already has such a tag, so it's easy to filter.
-  const bugTag = db
+  // Always tag it "Bug" — reuse the board's existing Bug tag, or create one
+  // (red) if the board doesn't have it yet, so every report is filterable.
+  let bugTag = db
     .prepare("SELECT id FROM tags WHERE board_id = ? AND LOWER(name) = 'bug' LIMIT 1")
     .get(boardId) as any;
-  if (bugTag) db.prepare('INSERT OR IGNORE INTO task_tags (task_id, tag_id) VALUES (?,?)').run(tid, bugTag.id);
+  if (!bugTag) {
+    const btid = id();
+    db.prepare('INSERT INTO tags (id, board_id, name, color) VALUES (?,?,?,?)')
+      .run(btid, boardId, 'Bug', darkenForWhiteText(TAG_COLORS[0]));
+    bugTag = { id: btid };
+  }
+  db.prepare('INSERT OR IGNORE INTO task_tags (task_id, tag_id) VALUES (?,?)').run(tid, bugTag.id);
 
   // Save the uploaded files as task attachments (uploaded_by NULL = anonymous).
   const ins = db.prepare(
