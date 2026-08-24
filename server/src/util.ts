@@ -25,6 +25,21 @@ export function randomColor(seed?: string): string {
   return AVATAR_COLORS[Math.floor(Math.random() * AVATAR_COLORS.length)];
 }
 
+// Category header dots — distinct, pleasant colours (no white text on them,
+// so they don't need the tag/avatar contrast constraint).
+export const CATEGORY_COLORS = [
+  '#5BA4CF', // blue
+  '#F2A65A', // orange
+  '#9B7EDE', // purple
+  '#61BD4F', // green
+  '#EB5A46', // red
+  '#00C2A8', // teal
+  '#E9C544', // yellow
+  '#EF7FB4', // pink
+  '#7F8C9A', // slate
+  '#B3BAC5', // grey
+];
+
 // Tag pills render white text, so every colour here is intentionally dark
 // enough for that text to stay easily readable (contrast > ~4:1).
 export const TAG_COLORS = [

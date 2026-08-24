@@ -108,6 +108,26 @@ export function BoardArea({ boardId, currentUser }: Props) {
     setData((d) => (d ? { ...d, categories: d.categories.map((c) => (c.id === categoryId ? { ...c, name } : c)) } : d));
   };
 
+  const setCategoryColor = async (categoryId: string, color: string) => {
+    await api.patch(`/categories/${categoryId}`, { color });
+    setData((d) => (d ? { ...d, categories: d.categories.map((c) => (c.id === categoryId ? { ...c, color } : c)) } : d));
+  };
+
+  const reorderCategories = (activeId: string, overId: string) => {
+    setData((d) => {
+      if (!d) return d;
+      const ids = d.categories.map((c) => c.id);
+      const oldIndex = ids.indexOf(activeId);
+      const newIndex = ids.indexOf(overId);
+      if (oldIndex < 0 || newIndex < 0) return d;
+      const cats = d.categories.slice();
+      const [moved] = cats.splice(oldIndex, 1);
+      cats.splice(newIndex, 0, moved);
+      api.patch('/categories/reorder', { boardId: d.board.id, order: cats.map((c) => c.id) }).catch(() => {});
+      return { ...d, categories: cats };
+    });
+  };
+
   const deleteCategory = async (categoryId: string) => {
     await api.del(`/categories/${categoryId}`);
     // the column's tasks are removed server-side too
@@ -137,7 +157,7 @@ export function BoardArea({ boardId, currentUser }: Props) {
     return <div className="main"><div className="empty-board"><div className="big">Board unavailable</div><div>You may not have access to this board.</div></div></div>;
   }
 
-  const ctx = { data, colorBy, filters, tz: currentUser.timezone, openTask: setOpenTaskId, createTask, moveTask, patchTask, createCategory, renameCategory, deleteCategory };
+  const ctx = { data, colorBy, filters, tz: currentUser.timezone, openTask: setOpenTaskId, createTask, moveTask, patchTask, createCategory, renameCategory, deleteCategory, setCategoryColor, reorderCategories };
   const filtersActive = filters.assignee || filters.tag || filters.from || filters.to;
 
   return (

@@ -1,9 +1,14 @@
-import { useState } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import {
-  DndContext, PointerSensor, useSensor, useSensors, useDraggable, useDroppable,
+  DndContext, PointerSensor, useSensor, useSensors, useDraggable, useDroppable, closestCorners,
   type DragEndEvent, DragOverlay, type DragStartEvent,
 } from '@dnd-kit/core';
+import { SortableContext, horizontalListSortingStrategy, useSortable } from '@dnd-kit/sortable';
+import { CSS } from '@dnd-kit/utilities';
 import type { BoardData, Task } from '../types';
+
+// Distinct category colours (mirrors server/src/util.ts CATEGORY_COLORS)
+const CATEGORY_COLORS = ['#5BA4CF', '#F2A65A', '#9B7EDE', '#61BD4F', '#EB5A46', '#00C2A8', '#E9C544', '#EF7FB4', '#7F8C9A', '#B3BAC5'];
 import { AvatarStack } from './Avatar';
 import {
   arrange, cardColor, dueStatus, fmtDate, assigneesOf, PRIORITY_COLORS, PRIORITY_LABELS,
@@ -22,6 +27,8 @@ interface Ctx {
   createCategory: (name: string) => Promise<void>;
   renameCategory: (categoryId: string, name: string) => Promise<void>;
   deleteCategory: (categoryId: string) => Promise<void>;
+  setCategoryColor: (categoryId: string, color: string) => Promise<void>;
+  reorderCategories: (activeId: string, overId: string) => void;
 }
 
 export function KanbanView(ctx: Ctx) {
@@ -44,16 +51,26 @@ export function KanbanView(ctx: Ctx) {
   }
   function onDragEnd(e: DragEndEvent) {
     setDragging(null);
-    const overId = e.over?.id as string | undefined;
-    if (!overId) return;
+    if (!e.over) return;
+    const overId = e.over.id as string;
+    if (e.active.data.current?.type === 'column') {
+      // reorder columns
+      const activeCat = e.active.id as string;
+      const overCat = overId.startsWith('body:') ? overId.slice(5) : overId;
+      if (activeCat !== overCat) ctx.reorderCategories(activeCat, overCat);
+      return;
+    }
+    // move a card into a column
+    const targetCat = overId.startsWith('body:') ? overId.slice(5) : overId;
     const task = data.tasks.find((x) => x.id === e.active.id);
-    if (task && task.category_id !== overId) ctx.moveTask(task.id, overId);
+    if (task && task.category_id !== targetCat) ctx.moveTask(task.id, targetCat);
   }
 
   return (
-    <DndContext sensors={sensors} onDragStart={onDragStart} onDragEnd={onDragEnd}>
+    <DndContext sensors={sensors} collisionDetection={closestCorners} onDragStart={onDragStart} onDragEnd={onDragEnd}>
       <div className="board-scroll">
         <div className="kanban">
+        <SortableContext items={data.categories.map((c) => c.id)} strategy={horizontalListSortingStrategy}>
           {data.categories.map((cat) => {
             const colTasks = topTasks.filter((t) => t.category_id === cat.id && taskPassesFilters(t, filters));
             const items = arrange(colTasks);
@@ -63,6 +80,7 @@ export function KanbanView(ctx: Ctx) {
                 onAdd={(name) => ctx.createTask(cat.id, name)}
                 onRename={(name) => ctx.renameCategory(cat.id, name)}
                 onDelete={() => ctx.deleteCategory(cat.id)}
+                onSetColor={(color) => ctx.setCategoryColor(cat.id, color)}
                 canEdit={data.canEdit}>
                 {items.map((it) =>
                   it.kind === 'group' ? (
@@ -80,6 +98,7 @@ export function KanbanView(ctx: Ctx) {
               </Column>
             );
           })}
+        </SortableContext>
           {data.canEdit && (
             <button className="add-col" onClick={() => {
               const name = prompt('New category name:', 'New Category');
@@ -93,15 +112,28 @@ export function KanbanView(ctx: Ctx) {
   );
 }
 
-function Column({ id, name, color, count, deleteCount, children, onAdd, onRename, onDelete, canEdit }: {
+function Column({ id, name, color, count, deleteCount, children, onAdd, onRename, onDelete, onSetColor, canEdit }: {
   id: string; name: string; color: string; count: number; deleteCount: number; children: React.ReactNode;
-  onAdd: (name: string) => void; onRename: (name: string) => void; onDelete: () => void; canEdit: boolean;
+  onAdd: (name: string) => void; onRename: (name: string) => void; onDelete: () => void;
+  onSetColor: (color: string) => void; canEdit: boolean;
 }) {
-  const { setNodeRef, isOver } = useDroppable({ id });
+  const sortable = useSortable({ id, data: { type: 'column' } });
+  const body = useDroppable({ id: `body:${id}` });
   const [adding, setAdding] = useState(false);
   const [val, setVal] = useState('');
   const [renaming, setRenaming] = useState(false);
   const [nameVal, setNameVal] = useState(name);
+  const [colorMenu, setColorMenu] = useState(false);
+  const colorRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    function onClick(e: MouseEvent) {
+      if (colorRef.current && !colorRef.current.contains(e.target as Node)) setColorMenu(false);
+    }
+    document.addEventListener('mousedown', onClick);
+    return () => document.removeEventListener('mousedown', onClick);
+  }, []);
+
   function submit() {
     if (val.trim()) onAdd(val.trim());
     setVal(''); setAdding(false);
@@ -117,10 +149,40 @@ function Column({ id, name, color, count, deleteCount, children, onAdd, onRename
       : `Delete the empty "${name}" column?`;
     if (confirm(msg)) onDelete();
   }
+
+  const style: React.CSSProperties = {
+    transform: CSS.Transform.toString(sortable.transform),
+    transition: sortable.transition,
+    opacity: sortable.isDragging ? 0.5 : 1,
+    zIndex: sortable.isDragging ? 5 : undefined,
+  };
+
   return (
-    <div className="column">
+    <div className="column" ref={sortable.setNodeRef} style={style}>
       <div className="column-head">
-        <span className="column-dot" style={{ background: color }} />
+        {canEdit && (
+          <span className="col-grip" title="Drag to reorder column" {...sortable.attributes} {...sortable.listeners}>⠿</span>
+        )}
+        <div ref={colorRef} style={{ position: 'relative', display: 'inline-flex' }}>
+          <span
+            className={'column-dot' + (canEdit ? ' clickable' : '')}
+            style={{ background: color }}
+            title={canEdit ? 'Change colour' : undefined}
+            onClick={() => canEdit && setColorMenu((m) => !m)}
+          />
+          {colorMenu && (
+            <div className="color-menu">
+              {CATEGORY_COLORS.map((c) => (
+                <button
+                  key={c}
+                  className={'color-swatch' + (c.toLowerCase() === color.toLowerCase() ? ' selected' : '')}
+                  style={{ background: c }}
+                  onClick={() => { onSetColor(c); setColorMenu(false); }}
+                />
+              ))}
+            </div>
+          )}
+        </div>
         {renaming ? (
           <input
             className="column-name-edit"
@@ -145,7 +207,7 @@ function Column({ id, name, color, count, deleteCount, children, onAdd, onRename
           <button className="column-del" title="Delete column" onClick={confirmDelete}>🗑</button>
         )}
       </div>
-      <div ref={setNodeRef} className={'column-body' + (isOver ? ' drop-over' : '')}>
+      <div ref={body.setNodeRef} className={'column-body' + (body.isOver ? ' drop-over' : '')}>
         {children}
       </div>
       {canEdit && (adding ? (

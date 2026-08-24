@@ -1,7 +1,7 @@
 import { Router } from 'express';
 import { z } from 'zod';
 import { db } from '../db.js';
-import { id, now } from '../util.js';
+import { id, now, CATEGORY_COLORS } from '../util.js';
 import { requireAuth } from '../auth.js';
 import {
   visibleWorkspaceIds,
@@ -212,11 +212,30 @@ router.post('/categories', (req, res) => {
   const name = String(req.body?.name || '').trim() || 'New Category';
   const cid = id();
   const maxPos = (db.prepare('SELECT COALESCE(MAX(position),-1)+1 AS p FROM categories WHERE board_id = ?').get(boardId) as any).p;
-  const color = String(req.body?.color || '#B3BAC5');
+  // Pick a colour not already used on this board so columns stay distinct.
+  const used = (db.prepare('SELECT color FROM categories WHERE board_id = ?').all(boardId) as any[])
+    .map((r) => String(r.color || '').toLowerCase());
+  const color = String(
+    req.body?.color ||
+    CATEGORY_COLORS.find((c) => !used.includes(c.toLowerCase())) ||
+    CATEGORY_COLORS[maxPos % CATEGORY_COLORS.length]
+  );
   db.prepare('INSERT INTO categories (id, board_id, name, color, position) VALUES (?,?,?,?,?)').run(
     cid, boardId, name, color, maxPos
   );
   res.json({ id: cid, name, color, position: maxPos });
+});
+
+// Persist column order. Before '/categories/:id' so 'reorder' isn't matched as an id.
+router.patch('/categories/reorder', (req, res) => {
+  const uid = req.user!.id;
+  const boardId = String(req.body?.boardId || '');
+  if (!canEdit(boardRole(uid, boardId))) return res.status(403).json({ error: 'No permission' });
+  const order: string[] = Array.isArray(req.body?.order) ? req.body.order.map(String) : [];
+  const upd = db.prepare('UPDATE categories SET position = ? WHERE id = ? AND board_id = ?');
+  let pos = 0;
+  for (const cid of order) upd.run(pos++, cid, boardId);
+  res.json({ ok: true });
 });
 
 router.patch('/categories/:id', (req, res) => {
