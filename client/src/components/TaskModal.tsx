@@ -69,8 +69,11 @@ export function TaskModal(props: Props) {
       if (tagRef.current && !tagRef.current.contains(e.target as Node)) setTagMenu(false);
       if (assigneeRef.current && !assigneeRef.current.contains(e.target as Node)) setAssigneeMenu(false);
     }
-    document.addEventListener('mousedown', onClick);
-    return () => document.removeEventListener('mousedown', onClick);
+    // Capture phase: the modal stops mousedown propagation (so backdrop clicks
+    // don't close it), which would otherwise prevent this document-level handler
+    // from seeing clicks inside the modal. Capturing runs before that stop.
+    document.addEventListener('mousedown', onClick, true);
+    return () => document.removeEventListener('mousedown', onClick, true);
   }, []);
 
   useEffect(() => () => { if (savedTimer.current) clearTimeout(savedTimer.current); }, []);
