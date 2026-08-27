@@ -76,6 +76,7 @@ CREATE TABLE IF NOT EXISTS tasks (
   assignee_id    TEXT REFERENCES users(id) ON DELETE SET NULL,
   priority       TEXT,
   dependency_id  TEXT REFERENCES tasks(id) ON DELETE SET NULL,
+  estimated_hours REAL,
   completed      INTEGER NOT NULL DEFAULT 0,
   position       INTEGER NOT NULL DEFAULT 0,
   created_at     TEXT NOT NULL
@@ -192,6 +193,11 @@ CREATE INDEX IF NOT EXISTS idx_task_assignees_task ON task_assignees(task_id);
 const userCols = (db.prepare('PRAGMA table_info(users)').all() as any[]).map((c) => c.name);
 if (!userCols.includes('timezone')) {
   db.exec('ALTER TABLE users ADD COLUMN timezone TEXT');
+}
+
+const taskCols = (db.prepare('PRAGMA table_info(tasks)').all() as any[]).map((c) => c.name);
+if (!taskCols.includes('estimated_hours')) {
+  db.exec('ALTER TABLE tasks ADD COLUMN estimated_hours REAL');
 }
 
 // One-time backfill of multi-assignees from the legacy single assignee_id column.

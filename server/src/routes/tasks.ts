@@ -130,7 +130,7 @@ router.post('/tasks', (req, res) => {
 // assignees are managed via dedicated endpoints (a task can have several)
 const EDITABLE_FIELDS = new Set([
   'name', 'description', 'due_date', 'priority',
-  'dependency_id', 'completed', 'category_id', 'position',
+  'dependency_id', 'completed', 'category_id', 'position', 'estimated_hours',
 ]);
 
 router.patch('/tasks/:id', (req, res) => {

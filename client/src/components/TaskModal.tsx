@@ -36,6 +36,7 @@ export function TaskModal(props: Props) {
   const subtasks = data.tasks.filter((t) => t.parent_task_id === taskId);
   const [name, setName] = useState(task?.name || '');
   const [desc, setDesc] = useState(task?.description || '');
+  const [est, setEst] = useState(task?.estimated_hours != null ? String(task.estimated_hours) : '');
   const [newSub, setNewSub] = useState('');
   const [tagMenu, setTagMenu] = useState(false);
   const [newTag, setNewTag] = useState('');
@@ -51,7 +52,11 @@ export function TaskModal(props: Props) {
   const [uploading, setUploading] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
 
-  useEffect(() => { setName(task?.name || ''); setDesc(task?.description || ''); }, [taskId]);
+  useEffect(() => {
+    setName(task?.name || '');
+    setDesc(task?.description || '');
+    setEst(task?.estimated_hours != null ? String(task.estimated_hours) : '');
+  }, [taskId]);
 
   useEffect(() => {
     api.get(`/tasks/${taskId}/comments`).then(({ comments }) => setComments(comments)).catch(() => {});
@@ -103,6 +108,16 @@ export function TaskModal(props: Props) {
   }
   async function saveDesc() {
     if (desc !== task.description) await patch(taskId, { description: desc });
+  }
+  async function saveEst() {
+    const trimmed = est.trim();
+    const val = trimmed === '' ? null : Number(trimmed);
+    // reject invalid/negative input by snapping back to the stored value
+    if (val !== null && (isNaN(val) || val < 0)) {
+      setEst(task.estimated_hours != null ? String(task.estimated_hours) : '');
+      return;
+    }
+    if (val !== (task.estimated_hours ?? null)) await patch(taskId, { estimated_hours: val } as any);
   }
   async function addSub() {
     if (!newSub.trim()) return;
@@ -262,6 +277,13 @@ export function TaskModal(props: Props) {
                     <option key={p} value={p}>{PRIORITY_LABELS[p]}</option>
                   ))}
                 </select>
+              </div>
+              <div>
+                <label className="field-label">Estimated (hours)</label>
+                <input type="number" min="0" step="0.5" inputMode="decimal" className="meta-date"
+                  placeholder="e.g. 4" value={est} disabled={!canEdit}
+                  onChange={(e) => setEst(e.target.value)}
+                  onBlur={saveEst} onKeyDown={(e) => { if (e.key === 'Enter') (e.target as HTMLInputElement).blur(); }} />
               </div>
               {isParent && (
                 <div>

@@ -340,6 +340,7 @@ input, textarea, select {
 .tgroup { margin-bottom: 20px; }
 .tgroup-head { display: flex; align-items: center; gap: 8px; margin: 10px 0 4px; }
 .tgroup-head .column-name { font-size: 14px; }
+.column-est { margin-left: auto; color: var(--text-faint); font-size: 12px; font-weight: 600; }
 .ttable { width: 100%; border-collapse: collapse; background: var(--panel); border-radius: 8px; overflow: hidden; box-shadow: var(--shadow); }
 .ttable th {
   text-align: left; font-size: 11px; text-transform: uppercase; letter-spacing: 0.5px;
@@ -630,8 +631,9 @@ input, textarea, select {
   .comment-list { overflow: visible; }
   .comment-box { margin-top: 12px; }
 
-  /* table: drop the tags column so it fits a phone */
-  .ttable th:nth-child(5), .ttable td:nth-child(5) { display: none; }
+  /* table: drop the Est. + Tags columns so it fits a phone */
+  .ttable th:nth-child(5), .ttable td:nth-child(5),
+  .ttable th:nth-child(6), .ttable td:nth-child(6) { display: none; }
 
   .board-top { padding: 10px 12px; }
   /* no collapse handle on mobile, so no need for the left gutter */

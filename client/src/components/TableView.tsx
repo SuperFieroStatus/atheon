@@ -28,12 +28,15 @@ export function TableView(ctx: Ctx) {
       {data.categories.map((cat) => {
         const colTasks = topTasks.filter((t) => t.category_id === cat.id && taskPassesFilters(t, filters));
         const items = arrange(colTasks);
+        const estRows = colTasks.flatMap((t) => [t, ...(subtasksByParent.get(t.id) || [])]);
+        const totalEst = Math.round(estRows.reduce((s, t) => s + (t.estimated_hours || 0), 0) * 100) / 100;
         return (
           <div className="tgroup" key={cat.id}>
             <div className="tgroup-head">
               <span className="column-dot" style={{ background: cat.color || '#B3BAC5' }} />
               <span className="column-name">{cat.name}</span>
               <span className="column-count">{colTasks.length}</span>
+              {totalEst > 0 && <span className="column-est" title="Total estimated hours">{totalEst}h est.</span>}
             </div>
             <table className="ttable">
               <thead>
@@ -42,12 +45,13 @@ export function TableView(ctx: Ctx) {
                   <th>Assignee</th>
                   <th>Due</th>
                   <th>Priority</th>
+                  <th>Est.</th>
                   <th>Tags</th>
                 </tr>
               </thead>
               <tbody>
                 {colTasks.length === 0 && (
-                  <tr><td colSpan={5} className="muted" style={{ fontStyle: 'italic' }}>No tasks</td></tr>
+                  <tr><td colSpan={6} className="muted" style={{ fontStyle: 'italic' }}>No tasks</td></tr>
                 )}
                 {items.map((it) => {
                   const rows = it.kind === 'group' ? [it.leader, ...it.dependents] : [it.leader];
@@ -104,6 +108,7 @@ function Row({ task, ctx, sub, depMark, indentLabel }: {
       <td>{assignees.length ? <span className="assignee-mini"><AvatarStack people={assignees} size="sm" max={4} />{assignees.length === 1 ? assignees[0].first_name : <span className="muted" style={{ fontSize: 12 }}>{assignees.length} people</span>}</span> : <span className="muted">—</span>}</td>
       <td>{task.due_date ? <span className={'pill ' + (ds ? 'due-' + ds.split('-')[1] : '')}>{fmtDate(task.due_date, ctx.tz)}</span> : <span className="muted">—</span>}</td>
       <td>{task.priority ? <span className="pill"><span className="prio-dot" style={{ background: PRIORITY_COLORS[task.priority] }} />{PRIORITY_LABELS[task.priority]}</span> : <span className="muted">—</span>}</td>
+      <td>{task.estimated_hours != null ? <span>{task.estimated_hours}h</span> : <span className="muted">—</span>}</td>
       <td>{task.tags.length ? <div className="card-tags" style={{ margin: 0 }}>{task.tags.map((t) => <span key={t.id} className="tag-pill" style={{ background: t.color }}>{t.name}</span>)}</div> : <span className="muted">—</span>}</td>
     </tr>
   );

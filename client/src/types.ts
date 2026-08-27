@@ -58,6 +58,7 @@ export interface Task {
   assignee_ids: string[];
   priority: 'low' | 'medium' | 'high' | 'urgent' | null;
   dependency_id: string | null;
+  estimated_hours: number | null;
   completed: boolean;
   position: number;
   created_at: string;
