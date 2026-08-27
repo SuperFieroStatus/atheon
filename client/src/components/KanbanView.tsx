@@ -24,6 +24,7 @@ interface Ctx {
   createTask: (categoryId: string | null, name: string) => Promise<void>;
   moveTask: (id: string, categoryId: string) => Promise<void>;
   patchTask: (id: string, fields: Partial<Task>) => Promise<void>;
+  setDone: (id: string, completed: boolean) => Promise<void>;
   createCategory: (name: string) => Promise<void>;
   renameCategory: (categoryId: string, name: string) => Promise<void>;
   deleteCategory: (categoryId: string) => Promise<void>;
@@ -250,7 +251,7 @@ function KanbanCard({ task, ctx, subs, isDependent }: { task: Task; ctx: Ctx; su
       <div className="card-title">
         <input type="checkbox" className="rcheck card-check" checked={task.completed}
           onClick={(e) => e.stopPropagation()}
-          onChange={(e) => ctx.patchTask(task.id, { completed: e.target.checked } as any)}
+          onChange={(e) => ctx.setDone(task.id, e.target.checked)}
           disabled={!data.canEdit} />
         <span>{task.name}</span>
       </div>
@@ -275,7 +276,7 @@ function KanbanCard({ task, ctx, subs, isDependent }: { task: Task; ctx: Ctx; su
             <div className={'subtask-row' + (s.completed ? ' done' : '')} key={s.id} onClick={() => ctx.openTask(s.id)}>
               <input type="checkbox" className="rcheck" style={{ width: 14, height: 14 }} checked={s.completed}
                 onClick={(e) => e.stopPropagation()}
-                onChange={(e) => ctx.patchTask(s.id, { completed: e.target.checked } as any)}
+                onChange={(e) => ctx.setDone(s.id, e.target.checked)}
                 disabled={!data.canEdit} />
               <span className="st-name">{s.name}</span>
               {s.tags.length > 0 && (

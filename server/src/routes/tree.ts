@@ -256,9 +256,18 @@ router.delete('/categories/:id', (req, res) => {
   if (!cat) return res.status(404).json({ error: 'Not found' });
   if (!canEdit(boardRole(uid, cat.board_id)))
     return res.status(403).json({ error: 'No permission' });
-  // Remove the column's tasks too (otherwise they'd orphan and vanish from views).
-  db.prepare('DELETE FROM tasks WHERE category_id = ?').run(req.params.id);
+  // Remove the column's placements from THIS board. Tasks also placed on other
+  // boards survive there; tasks left on no board at all are deleted.
+  const affected = db
+    .prepare('SELECT task_id FROM task_placements WHERE board_id = ? AND category_id = ?')
+    .all(cat.board_id, req.params.id) as any[];
+  db.prepare('DELETE FROM task_placements WHERE board_id = ? AND category_id = ?').run(cat.board_id, req.params.id);
   db.prepare('DELETE FROM categories WHERE id = ?').run(req.params.id);
+  const del = db.prepare('DELETE FROM tasks WHERE id = ?');
+  for (const a of affected) {
+    const remaining = (db.prepare('SELECT COUNT(*) AS c FROM task_placements WHERE task_id = ?').get(a.task_id) as any).c;
+    if (remaining === 0) del.run(a.task_id);
+  }
   res.json({ ok: true });
 });
 

@@ -54,6 +54,29 @@ export function BoardArea({ boardId, currentUser }: Props) {
     replaceTask(task);
   };
 
+  // Per-board state (column / completion / position) lives on the placement, so
+  // it can differ on each board the task belongs to.
+  const patchPlacement = async (id: string, fields: { category_id?: string | null; completed?: boolean; position?: number }) => {
+    if (!data) return;
+    setData((d) => (d ? { ...d, tasks: d.tasks.map((x) => (x.id === id ? { ...x, ...fields } as Task : x)) } : d));
+    const { task } = await api.patch(`/boards/${data.board.id}/placements/${id}`, fields);
+    if (task) replaceTask(task);
+  };
+
+  // Completion is per-board for top-level tasks, but shared for subtasks.
+  const setDone = async (id: string, completed: boolean) => {
+    const t = data?.tasks.find((x) => x.id === id);
+    if (t?.parent_task_id) await patchTask(id, { completed } as any);
+    else await patchPlacement(id, { completed });
+  };
+
+  const removeFromBoard = async (id: string) => {
+    if (!data) return;
+    await api.del(`/tasks/${id}/placements/${data.board.id}`);
+    setData((d) => (d ? { ...d, tasks: d.tasks.filter((t) => t.id !== id && t.parent_task_id !== id) } : d));
+    if (openTaskId === id) setOpenTaskId(null);
+  };
+
   const createTask = async (categoryId: string | null, name: string, parentTaskId?: string) => {
     if (!data) return;
     const { task } = await api.post('/tasks', { boardId: data.board.id, categoryId, name, parentTaskId });
@@ -66,7 +89,7 @@ export function BoardArea({ boardId, currentUser }: Props) {
   };
 
   const moveTask = async (id: string, categoryId: string) => {
-    await patchTask(id, { category_id: categoryId } as any);
+    await patchPlacement(id, { category_id: categoryId });
   };
 
   const deleteTask = async (id: string) => {
@@ -157,7 +180,7 @@ export function BoardArea({ boardId, currentUser }: Props) {
     return <div className="main"><div className="empty-board"><div className="big">Board unavailable</div><div>You may not have access to this board.</div></div></div>;
   }
 
-  const ctx = { data, colorBy, filters, tz: currentUser.timezone, openTask: setOpenTaskId, createTask, moveTask, patchTask, createCategory, renameCategory, deleteCategory, setCategoryColor, reorderCategories };
+  const ctx = { data, colorBy, filters, tz: currentUser.timezone, openTask: setOpenTaskId, createTask, moveTask, patchTask, setDone, createCategory, renameCategory, deleteCategory, setCategoryColor, reorderCategories };
   const filtersActive = filters.assignee || filters.tag || filters.from || filters.to;
 
   return (
@@ -207,8 +230,10 @@ export function BoardArea({ boardId, currentUser }: Props) {
           currentUser={currentUser}
           tz={currentUser.timezone}
           onPatch={patchTask}
+          onSetDone={setDone}
           onCreateSubtask={createSubtask}
           onDeleteTask={deleteTask}
+          onRemoveFromBoard={removeFromBoard}
           onToggleTag={toggleTag}
           onCreateTag={createTag}
           onAddAssignee={addAssignee}

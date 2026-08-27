@@ -102,11 +102,16 @@ router.post('/bug/:token', upload.array('files', 10), (req, res) => {
     `— Submitted via the public bug form on ${now().slice(0, 10)}`;
 
   const tid = id();
+  const createdAt = now();
   const maxPos = (db.prepare('SELECT COALESCE(MAX(position),-1)+1 AS p FROM tasks WHERE board_id = ?').get(boardId) as any).p;
   db.prepare(
     `INSERT INTO tasks (id, board_id, category_id, parent_task_id, name, description, position, created_at)
      VALUES (?,?,?,?,?,?,?,?)`
-  ).run(tid, boardId, categoryId, null, name, description, maxPos, now());
+  ).run(tid, boardId, categoryId, null, name, description, maxPos, createdAt);
+  // place it on the intake board so it shows up there
+  db.prepare(
+    'INSERT INTO task_placements (task_id, board_id, category_id, completed, position, created_at) VALUES (?,?,?,0,?,?)'
+  ).run(tid, boardId, categoryId, maxPos, createdAt);
 
   // Always tag it "Bug" — reuse the board's existing Bug tag, or create one
   // (red) if the board doesn't have it yet, so every report is filterable.

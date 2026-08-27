@@ -12,6 +12,7 @@ interface Ctx {
   tz?: string | null;
   openTask: (id: string) => void;
   patchTask: (id: string, fields: Partial<Task>) => Promise<void>;
+  setDone: (id: string, completed: boolean) => Promise<void>;
 }
 
 export function TableView(ctx: Ctx) {
@@ -98,7 +99,7 @@ function Row({ task, ctx, sub, depMark, indentLabel }: {
         <div className="tname">
           <input type="checkbox" className="rcheck" checked={task.completed}
             onClick={(e) => e.stopPropagation()}
-            onChange={(e) => ctx.patchTask(task.id, { completed: e.target.checked } as any)}
+            onChange={(e) => ctx.setDone(task.id, e.target.checked)}
             disabled={!data.canEdit} />
           {tint && <span className="column-dot" style={{ background: tint }} />}
           <span>{task.name}</span>

@@ -81,10 +81,29 @@ router.get('/boards/:id/data', (req, res) => {
   const categories = db
     .prepare('SELECT * FROM categories WHERE board_id = ? ORDER BY position, id')
     .all(boardId);
-  const tasksRaw = db
-    .prepare('SELECT * FROM tasks WHERE board_id = ? ORDER BY position, created_at')
+  // Top-level tasks come from this board's placements (a task may be placed on
+  // several boards, each with its own column/completion/position). Subtasks are
+  // shared content, fetched by parent regardless of board.
+  const placed = db
+    .prepare(
+      `SELECT t.id, t.board_id, t.parent_task_id, t.name, t.description, t.due_date,
+              t.priority, t.dependency_id, t.estimated_hours, t.created_at,
+              p.category_id AS category_id, p.completed AS completed, p.position AS position
+       FROM task_placements p JOIN tasks t ON t.id = p.task_id
+       WHERE p.board_id = ? AND t.parent_task_id IS NULL
+       ORDER BY p.position, t.created_at`
+    )
     .all(boardId) as any[];
-  const tasks = tasksRaw.map(serializeTask);
+  const parentIds = placed.map((t) => t.id);
+  const subs = parentIds.length
+    ? (db
+        .prepare(`SELECT * FROM tasks WHERE parent_task_id IN (${parentIds.map(() => '?').join(',')})`)
+        .all(...parentIds) as any[])
+    : [];
+  const tasks = [
+    ...placed.map((t) => serializeTask({ ...t, board_id: boardId })),
+    ...subs.map((s) => serializeTask(s)),
+  ];
   const tags = db.prepare('SELECT * FROM tags WHERE board_id = ? ORDER BY name').all(boardId);
   const members = projectMembers(boardId);
 
@@ -115,22 +134,36 @@ router.post('/tasks', (req, res) => {
   const parentTaskId = req.body?.parentTaskId ? String(req.body.parentTaskId) : null;
 
   const tid = id();
+  const createdAt = now();
   const maxPos = (
     db.prepare('SELECT COALESCE(MAX(position),-1)+1 AS p FROM tasks WHERE board_id = ?').get(boardId) as any
   ).p;
   db.prepare(
     `INSERT INTO tasks (id, board_id, category_id, parent_task_id, name, position, created_at)
      VALUES (?,?,?,?,?,?,?)`
-  ).run(tid, boardId, categoryId, parentTaskId, name, maxPos, now());
+  ).run(tid, boardId, categoryId, parentTaskId, name, maxPos, createdAt);
+
+  // top-level tasks live on boards via placements; subtasks follow their parent
+  if (!parentTaskId) {
+    const ppos = (
+      db.prepare('SELECT COALESCE(MAX(position),-1)+1 AS p FROM task_placements WHERE board_id = ?').get(boardId) as any
+    ).p;
+    db.prepare(
+      'INSERT INTO task_placements (task_id, board_id, category_id, completed, position, created_at) VALUES (?,?,?,0,?,?)'
+    ).run(tid, boardId, categoryId, ppos, createdAt);
+  }
 
   const task = db.prepare('SELECT * FROM tasks WHERE id = ?').get(tid) as any;
   res.json({ task: serializeTask(task) });
 });
 
 // assignees are managed via dedicated endpoints (a task can have several)
+// Content fields shared across every board the task is on. Per-board state
+// (category_id, completed, position) is managed via the placements endpoint.
+// `completed` stays here only for subtasks, which have no placement.
 const EDITABLE_FIELDS = new Set([
   'name', 'description', 'due_date', 'priority',
-  'dependency_id', 'completed', 'category_id', 'position', 'estimated_hours',
+  'dependency_id', 'completed', 'estimated_hours',
 ]);
 
 router.patch('/tasks/:id', (req, res) => {
@@ -164,8 +197,116 @@ router.delete('/tasks/:id', (req, res) => {
   const uid = req.user!.id;
   if (!canEdit(taskProjectRole(uid, req.params.id)))
     return res.status(403).json({ error: 'No permission' });
-  db.prepare('DELETE FROM tasks WHERE id = ?').run(req.params.id);
+  db.prepare('DELETE FROM tasks WHERE id = ?').run(req.params.id); // cascades to placements
   res.json({ ok: true });
+});
+
+/* --------------------------- Board placements -------------------------- */
+
+function workspaceOfBoard(boardId: string): string | null {
+  const b = db.prepare('SELECT project_id FROM boards WHERE id = ?').get(boardId) as any;
+  if (!b) return null;
+  const p = db.prepare('SELECT workspace_id FROM projects WHERE id = ?').get(b.project_id) as any;
+  return p?.workspace_id || null;
+}
+
+/** A task serialized with one board's placement state (column/completion/position). */
+function serializeTaskForBoard(taskId: string, boardId: string) {
+  const row = db
+    .prepare(
+      `SELECT t.id, t.board_id, t.parent_task_id, t.name, t.description, t.due_date, t.priority,
+              t.dependency_id, t.estimated_hours, t.created_at,
+              p.category_id AS category_id, p.completed AS completed, p.position AS position
+       FROM task_placements p JOIN tasks t ON t.id = p.task_id
+       WHERE p.task_id = ? AND p.board_id = ?`
+    )
+    .get(taskId, boardId) as any;
+  if (!row) return null;
+  row.board_id = boardId;
+  return serializeTask(row);
+}
+
+/** Update a task's per-board state (column, completion, ordering) on one board. */
+router.patch('/boards/:boardId/placements/:taskId', (req, res) => {
+  const uid = req.user!.id;
+  const { boardId, taskId } = req.params;
+  if (!canEdit(boardRole(uid, boardId))) return res.status(403).json({ error: 'No permission' });
+  const placement = db
+    .prepare('SELECT task_id FROM task_placements WHERE task_id = ? AND board_id = ?')
+    .get(taskId, boardId);
+  if (!placement) return res.status(404).json({ error: 'Task is not on this board' });
+
+  const updates: string[] = [];
+  const values: any[] = [];
+  if ('category_id' in (req.body || {})) { updates.push('category_id = ?'); values.push(req.body.category_id || null); }
+  if ('completed' in (req.body || {})) { updates.push('completed = ?'); values.push(req.body.completed ? 1 : 0); }
+  if ('position' in (req.body || {})) { updates.push('position = ?'); values.push(Number(req.body.position) || 0); }
+  if (updates.length) {
+    values.push(taskId, boardId);
+    db.prepare(`UPDATE task_placements SET ${updates.join(', ')} WHERE task_id = ? AND board_id = ?`).run(...values);
+  }
+  res.json({ task: serializeTaskForBoard(taskId, boardId) });
+});
+
+/** The workspace's editable boards (grouped by project) plus where this task already lives. */
+router.get('/tasks/:id/board-options', (req, res) => {
+  const uid = req.user!.id;
+  const taskId = req.params.id;
+  if (!canView(taskProjectRole(uid, taskId))) return res.status(403).json({ error: 'No access' });
+  const task = db.prepare('SELECT board_id FROM tasks WHERE id = ?').get(taskId) as any;
+  if (!task) return res.status(404).json({ error: 'Not found' });
+  const workspaceId = workspaceOfBoard(task.board_id);
+  if (!workspaceId) return res.json({ projects: [], placedOn: [] });
+
+  const projects = db
+    .prepare('SELECT id, name FROM projects WHERE workspace_id = ? ORDER BY position, name')
+    .all(workspaceId) as any[];
+  const out: any[] = [];
+  for (const p of projects) {
+    const boards = (db.prepare('SELECT id, name FROM boards WHERE project_id = ? ORDER BY position, name').all(p.id) as any[])
+      .filter((b) => canEdit(boardRole(uid, b.id)));
+    if (boards.length) out.push({ project: { id: p.id, name: p.name }, boards });
+  }
+  const placedOn = (db.prepare('SELECT board_id FROM task_placements WHERE task_id = ?').all(taskId) as any[]).map((r) => r.board_id);
+  res.json({ projects: out, placedOn });
+});
+
+/** Place a task on another board in the same workspace (lands in that board's first column). */
+router.post('/tasks/:id/placements', (req, res) => {
+  const uid = req.user!.id;
+  const taskId = req.params.id;
+  const boardId = String(req.body?.boardId || '');
+  if (!canView(taskProjectRole(uid, taskId))) return res.status(403).json({ error: 'No access to this task' });
+  if (!canEdit(boardRole(uid, boardId))) return res.status(403).json({ error: 'No permission on that board' });
+  const task = db.prepare('SELECT id, parent_task_id, board_id FROM tasks WHERE id = ?').get(taskId) as any;
+  if (!task) return res.status(404).json({ error: 'Task not found' });
+  if (task.parent_task_id) return res.status(400).json({ error: 'Subtasks follow their parent task' });
+  if (workspaceOfBoard(task.board_id) !== workspaceOfBoard(boardId))
+    return res.status(400).json({ error: 'Boards must be in the same workspace' });
+
+  const exists = db.prepare('SELECT task_id FROM task_placements WHERE task_id = ? AND board_id = ?').get(taskId, boardId);
+  if (!exists) {
+    const firstCat = db.prepare('SELECT id FROM categories WHERE board_id = ? ORDER BY position, id LIMIT 1').get(boardId) as any;
+    const pos = (db.prepare('SELECT COALESCE(MAX(position),-1)+1 AS p FROM task_placements WHERE board_id = ?').get(boardId) as any).p;
+    db.prepare('INSERT INTO task_placements (task_id, board_id, category_id, completed, position, created_at) VALUES (?,?,?,0,?,?)')
+      .run(taskId, boardId, firstCat?.id || null, pos, now());
+  }
+  res.json({ ok: true });
+});
+
+/** Remove a task from one board. If it then lives on no boards, delete it outright. */
+router.delete('/tasks/:id/placements/:boardId', (req, res) => {
+  const uid = req.user!.id;
+  const { id: taskId, boardId } = req.params;
+  if (!canEdit(boardRole(uid, boardId))) return res.status(403).json({ error: 'No permission' });
+  db.prepare('DELETE FROM task_placements WHERE task_id = ? AND board_id = ?').run(taskId, boardId);
+  const remaining = (db.prepare('SELECT COUNT(*) AS c FROM task_placements WHERE task_id = ?').get(taskId) as any).c;
+  let taskDeleted = false;
+  if (remaining === 0) {
+    db.prepare('DELETE FROM tasks WHERE id = ?').run(taskId);
+    taskDeleted = true;
+  }
+  res.json({ ok: true, taskDeleted });
 });
 
 /* --------------------------------- Tags -------------------------------- */

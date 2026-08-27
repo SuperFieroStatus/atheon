@@ -18,8 +18,10 @@ interface Props {
   currentUser: User;
   tz?: string | null;
   onPatch: (id: string, fields: Partial<Task>) => Promise<void>;
+  onSetDone: (id: string, completed: boolean) => Promise<void>;
   onCreateSubtask: (parentId: string, name: string) => Promise<void>;
   onDeleteTask: (id: string) => Promise<void>;
+  onRemoveFromBoard: (id: string) => Promise<void>;
   onToggleTag: (taskId: string, tagId: string, add: boolean) => Promise<void>;
   onCreateTag: (name: string) => Promise<Tag>;
   onAddAssignee: (taskId: string, userId: string) => Promise<void>;
@@ -51,6 +53,9 @@ export function TaskModal(props: Props) {
   const [attachments, setAttachments] = useState<Attachment[]>([]);
   const [uploading, setUploading] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
+  const [boardsOpen, setBoardsOpen] = useState(false);
+  const [boardOpts, setBoardOpts] = useState<{ projects: { project: { id: string; name: string }; boards: { id: string; name: string }[] }[]; placedOn: string[] } | null>(null);
+  const boardsRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     setName(task?.name || '');
@@ -73,6 +78,7 @@ export function TaskModal(props: Props) {
     function onClick(e: MouseEvent) {
       if (tagRef.current && !tagRef.current.contains(e.target as Node)) setTagMenu(false);
       if (assigneeRef.current && !assigneeRef.current.contains(e.target as Node)) setAssigneeMenu(false);
+      if (boardsRef.current && !boardsRef.current.contains(e.target as Node)) setBoardsOpen(false);
     }
     // Capture phase: the modal stops mousedown propagation (so backdrop clicks
     // don't close it), which would otherwise prevent this document-level handler
@@ -98,6 +104,26 @@ export function TaskModal(props: Props) {
     savedTimer.current = window.setTimeout(() => setSaved(false), 1600);
   }
   const patch = async (id: string, fields: Partial<Task>) => { await props.onPatch(id, fields); flashSaved(); };
+  const setDone = async (v: boolean) => { await props.onSetDone(taskId, v); flashSaved(); };
+
+  async function openBoards() {
+    setBoardsOpen((o) => !o);
+    if (!boardOpts) {
+      try { setBoardOpts(await api.get(`/tasks/${taskId}/board-options`)); } catch { /* ignore */ }
+    }
+  }
+  async function toggleBoard(boardId: string, on: boolean) {
+    if (boardId === data.board.id) return; // current board is managed via "Remove from board"
+    // optimistic
+    setBoardOpts((o) => (o ? { ...o, placedOn: on ? [...o.placedOn, boardId] : o.placedOn.filter((b) => b !== boardId) } : o));
+    try {
+      if (on) await api.post(`/tasks/${taskId}/placements`, { boardId });
+      else await api.del(`/tasks/${taskId}/placements/${boardId}`);
+      flashSaved();
+    } catch {
+      setBoardOpts((o) => (o ? { ...o, placedOn: on ? o.placedOn.filter((b) => b !== boardId) : [...o.placedOn, boardId] } : o));
+    }
+  }
   const toggleTag = async (id: string, tagId: string, add: boolean) => { await props.onToggleTag(id, tagId, add); flashSaved(); };
   const addAssignee = async (id: string, uid: string) => { await props.onAddAssignee(id, uid); flashSaved(); };
   const removeAssignee = async (id: string, uid: string) => { await props.onRemoveAssignee(id, uid); flashSaved(); };
@@ -179,6 +205,39 @@ export function TaskModal(props: Props) {
           />
           <div className="modal-head-actions">
             <span className={'saved-badge' + (saved ? ' show' : '')}>Saved ✓</span>
+            {isParent && canEdit && (
+              <div className="boards-ctl" ref={boardsRef}>
+                <button className="btn subtle sm" onClick={openBoards} title="Assign this task to boards">
+                  ⧉ Boards{boardOpts && boardOpts.placedOn.length > 1 ? ` · ${boardOpts.placedOn.length}` : ''}
+                </button>
+                {boardsOpen && (
+                  <div className="boards-menu">
+                    <div className="boards-menu-title">Assign to boards in this workspace</div>
+                    {!boardOpts && <div className="muted" style={{ padding: 8, fontSize: 12 }}>Loading…</div>}
+                    {boardOpts && boardOpts.projects.length === 0 && (
+                      <div className="muted" style={{ padding: 8, fontSize: 12 }}>No other boards you can edit.</div>
+                    )}
+                    {boardOpts?.projects.map((p) => (
+                      <div className="boards-proj" key={p.project.id}>
+                        <div className="boards-proj-name">{p.project.name}</div>
+                        {p.boards.map((b) => {
+                          const current = b.id === data.board.id;
+                          const checked = boardOpts.placedOn.includes(b.id) || current;
+                          return (
+                            <label className={'boards-item' + (current ? ' current' : '')} key={b.id}>
+                              <input type="checkbox" checked={checked} disabled={current}
+                                onChange={(e) => toggleBoard(b.id, e.target.checked)} />
+                              <span className="boards-bname">{b.name}</span>
+                              {current && <span className="muted" style={{ fontSize: 10.5 }}>this board</span>}
+                            </label>
+                          );
+                        })}
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
             <button className="btn" onClick={props.onClose}>Done</button>
           </div>
         </div>
@@ -193,14 +252,21 @@ export function TaskModal(props: Props) {
                   className="rcheck"
                   checked={task.completed}
                   disabled={!canEdit}
-                  onChange={(e) => patch(taskId, { completed: e.target.checked } as any)}
+                  onChange={(e) => setDone(e.target.checked)}
                 />
                 {task.completed ? 'Completed' : 'Mark complete'}
               </label>
               <div className="grow" />
+              {canEdit && isParent && (
+                <button className="btn subtle sm"
+                  onClick={() => { if (confirm('Remove this task from this board? It will stay on any other boards it belongs to.')) props.onRemoveFromBoard(taskId); }}>
+                  Remove from board
+                </button>
+              )}
               {canEdit && (
-                <button className="btn danger sm" onClick={() => { if (confirm('Delete this task?')) props.onDeleteTask(taskId); }}>
-                  Delete
+                <button className="btn danger sm"
+                  onClick={() => { if (confirm(isParent ? 'Delete this task from every board? This cannot be undone.' : 'Delete this subtask?')) props.onDeleteTask(taskId); }}>
+                  {isParent ? 'Delete everywhere' : 'Delete'}
                 </button>
               )}
             </div>

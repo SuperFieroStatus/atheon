@@ -676,6 +676,23 @@ input, textarea, select {
   display: flex; align-items: center; justify-content: center; font-size: 28px;
 }
 
+/* task modal: assign to boards menu */
+.boards-ctl { position: relative; }
+.boards-menu {
+  position: absolute; top: calc(100% + 6px); right: 0; z-index: 60;
+  width: 300px; max-height: 340px; overflow-y: auto;
+  background: var(--panel); border: 1px solid var(--line);
+  border-radius: 10px; box-shadow: var(--shadow-lg); padding: 8px;
+}
+.boards-menu-title { font-size: 11px; font-weight: 700; color: var(--text-faint); text-transform: uppercase; letter-spacing: 0.4px; padding: 4px 6px 8px; }
+.boards-proj { margin-bottom: 8px; }
+.boards-proj-name { font-size: 12px; font-weight: 700; color: var(--text-soft); padding: 2px 6px; }
+.boards-item { display: flex; align-items: center; gap: 8px; padding: 5px 6px; border-radius: 6px; cursor: pointer; font-size: 13px; }
+.boards-item:hover { background: var(--bg-2); }
+.boards-item.current { opacity: 0.85; cursor: default; }
+.boards-item input { width: 15px; height: 15px; accent-color: var(--vex); }
+.boards-bname { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
 /* board control: enable/copy the public bug form */
 .bugform-ctl { position: relative; }
 .btn.subtle.on { color: var(--vex-bright); box-shadow: inset 0 0 0 1px var(--vex); }

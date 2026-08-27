@@ -161,6 +161,18 @@ CREATE TABLE IF NOT EXISTS todos (
   created_at TEXT NOT NULL
 );
 
+-- A task can be placed on many boards. Its content lives once on tasks; each
+-- placement carries that board's column, completion, and ordering independently.
+CREATE TABLE IF NOT EXISTS task_placements (
+  task_id     TEXT NOT NULL REFERENCES tasks(id) ON DELETE CASCADE,
+  board_id    TEXT NOT NULL REFERENCES boards(id) ON DELETE CASCADE,
+  category_id TEXT REFERENCES categories(id) ON DELETE SET NULL,
+  completed   INTEGER NOT NULL DEFAULT 0,
+  position    INTEGER NOT NULL DEFAULT 0,
+  created_at  TEXT NOT NULL,
+  PRIMARY KEY (task_id, board_id)
+);
+
 CREATE TABLE IF NOT EXISTS bug_intake (
   board_id    TEXT PRIMARY KEY REFERENCES boards(id) ON DELETE CASCADE,
   token       TEXT UNIQUE NOT NULL,
@@ -183,6 +195,8 @@ CREATE INDEX IF NOT EXISTS idx_tasks_parent ON tasks(parent_task_id);
 CREATE INDEX IF NOT EXISTS idx_comments_task ON comments(task_id);
 CREATE INDEX IF NOT EXISTS idx_attachments_task ON attachments(task_id);
 CREATE INDEX IF NOT EXISTS idx_bug_intake_token ON bug_intake(token);
+CREATE INDEX IF NOT EXISTS idx_placements_board ON task_placements(board_id);
+CREATE INDEX IF NOT EXISTS idx_placements_task ON task_placements(task_id);
 CREATE INDEX IF NOT EXISTS idx_memberships_user ON memberships(user_id);
 CREATE INDEX IF NOT EXISTS idx_memberships_resource ON memberships(resource_type, resource_id);
 CREATE INDEX IF NOT EXISTS idx_todos_user ON todos(user_id);
@@ -198,6 +212,23 @@ if (!userCols.includes('timezone')) {
 const taskCols = (db.prepare('PRAGMA table_info(tasks)').all() as any[]).map((c) => c.name);
 if (!taskCols.includes('estimated_hours')) {
   db.exec('ALTER TABLE tasks ADD COLUMN estimated_hours REAL');
+}
+
+// One-time backfill: give every existing top-level task a placement mirroring
+// its current board/column/completion. Runs only when placements is empty (i.e.
+// the first boot after this feature ships), so it never resurrects tasks that
+// were later removed from all their boards.
+const placementCount = (db.prepare('SELECT COUNT(*) AS c FROM task_placements').get() as any).c;
+if (placementCount === 0) {
+  const legacyTasks = db
+    .prepare('SELECT id, board_id, category_id, completed, position, created_at FROM tasks WHERE parent_task_id IS NULL')
+    .all() as any[];
+  const insP = db.prepare(
+    'INSERT INTO task_placements (task_id, board_id, category_id, completed, position, created_at) VALUES (?,?,?,?,?,?)'
+  );
+  for (const t of legacyTasks) {
+    insP.run(t.id, t.board_id, t.category_id, t.completed, t.position, t.created_at);
+  }
 }
 
 // One-time backfill of multi-assignees from the legacy single assignee_id column.
